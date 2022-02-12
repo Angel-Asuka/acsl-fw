@@ -4,10 +4,12 @@
  * langley service framework
  * class App
  * cfg = {
+ *      root : [OPTIONAL] 根目录
  *      port : 监听端口，默认80
- *      root : [OPTIONAL] 应用根目录，App 会自动扫描并加载这个目录中的所有.js文件
+ *      app : [OPTIONAL] 应用目录，App 会自动扫描并加载这个目录中的所有.js文件
  *      modules : [OPTIONAL] 模块列表
  *      static :  静态路径
+ *      template : 模板路径
  * }
  * 
  * 模块的module.exports中：
@@ -26,11 +28,13 @@ const cookieParser = require('cookie-parser');
 const K_APP_CONFIG = Symbol();
 const K_APP_ROUTINE = Symbol();
 const K_APP_MODULES = Symbol();
-const V_APP_METHOD_ALL = ['GET', 'POST'];
 const V_APP_EMPTY_FUNC = () => { }
 
-module.exports = class {
+
+module.exports = (__l)=>{return class {
     constructor(cfg) {
+        this.Langley = __l;
+
         if (!cfg) cfg = {}
         this[K_APP_CONFIG] = cfg;
         this[K_APP_ROUTINE] = {};
@@ -45,12 +49,15 @@ module.exports = class {
         // 尝试扫描 root 所指目录
         if (cfg.app) {
             const fs = require('fs');
-            const dl = fs.readdirSync(cfg.app);
+            const dl = fs.readdirSync(cfg.root + cfg.app);
             dl.forEach((itm) => {
                 if (itm.substr(itm.length - 3).toLowerCase() == '.js')
                     cfg.modules.push(cfg.app + '/' + itm.substr(0, itm.length - 3));
             });
         }
+
+        if (cfg.template)
+            this.Template = new this.Langley.Template({root:cfg.root + cfg.template})
 
         // 预加载所有模块
         for (let m of cfg.modules) {
@@ -87,6 +94,8 @@ module.exports = class {
         }
     }
 
+    get modules() { return this[K_APP_MODULES]; }
+
     run() {
         if (!this[K_APP_CONFIG].port) this[K_APP_CONFIG].port = 80;
         const srv = express();
@@ -99,7 +108,7 @@ module.exports = class {
                 const func = this[K_APP_ROUTINE][req.url];
                 if (func[req.method]) {
                     if (req.method == 'POST') {
-                        const ret = await func.pre(req, res);
+                        const ret = await func.pre(req, res, this);
                         if (ret) {
                             res.send(ret);
                             return;
@@ -114,7 +123,7 @@ module.exports = class {
                             });
                         }));
                     }
-                    const ret2 = await func.proc(req, res);
+                    const ret2 = await func.proc(req, res, this);
                     if (ret2) res.send(ret2);
                 } else
                     res.status(400).send('Denine');
@@ -125,4 +134,4 @@ module.exports = class {
         console.log(this[K_APP_CONFIG].port);
         return true;
     }
-}
+}}

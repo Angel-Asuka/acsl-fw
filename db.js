@@ -13,8 +13,9 @@
 
 const MySQL_Driver = require('mysql');
 
-module.exports = class {
+module.exports = (__l)=>{return class {
     constructor(cfg) {
+        this.Langley = __l;
         if (!cfg.connectionLimit)
             cfg.connectionLimit = 10;
         this.pool = MySQL_Driver.createPool(cfg);
@@ -45,4 +46,4 @@ module.exports = class {
             });
         });
     }
-}
+}}
