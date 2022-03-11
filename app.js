@@ -31,6 +31,7 @@ const K_APP_CONFIG = Symbol();
 const K_APP_ROUTINE = Symbol();
 const K_APP_MODULES = Symbol();
 const K_APP_ERRPAGES = Symbol();
+const K_APP_CONFIG_DATA = Symbol();
 const V_APP_EMPTY_FUNC = () => { }
 
 
@@ -40,6 +41,7 @@ module.exports = (__l)=>{return class {
 
         if (!cfg) cfg = {}
         this[K_APP_CONFIG] = cfg;
+        this[K_APP_CONFIG_DATA] = cfg.data;
         this[K_APP_ROUTINE] = {};
         this[K_APP_MODULES] = {};
         this[K_APP_ERRPAGES] = {};
@@ -109,6 +111,8 @@ module.exports = (__l)=>{return class {
     }
 
     get modules() { return this[K_APP_MODULES]; }
+    get config() { return this[K_APP_CONFIG]; }
+    get data() { return this[K_APP_CONFIG_DATA]; }
 
     run() {
         if (!this[K_APP_CONFIG].port) this[K_APP_CONFIG].port = 80;
