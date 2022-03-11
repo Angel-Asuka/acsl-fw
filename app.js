@@ -10,6 +10,7 @@
  *      modules : [OPTIONAL] 模块列表
  *      static :  静态路径
  *      template : 模板路径
+ *      errpages : HTTP 状态页面路径
  * }
  * 
  * 模块的module.exports中：
@@ -21,6 +22,7 @@
  * 
  */
 
+const fs = require('fs');
 const express = require('express');
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
@@ -28,6 +30,7 @@ const cookieParser = require('cookie-parser');
 const K_APP_CONFIG = Symbol();
 const K_APP_ROUTINE = Symbol();
 const K_APP_MODULES = Symbol();
+const K_APP_ERRPAGES = Symbol();
 const V_APP_EMPTY_FUNC = () => { }
 
 
@@ -39,6 +42,7 @@ module.exports = (__l)=>{return class {
         this[K_APP_CONFIG] = cfg;
         this[K_APP_ROUTINE] = {};
         this[K_APP_MODULES] = {};
+        this[K_APP_ERRPAGES] = {};
         if (!cfg.modules) cfg.modules = [];
 
         if (!cfg.root)
@@ -46,9 +50,19 @@ module.exports = (__l)=>{return class {
         else if (cfg.root[cfg.root.length - 1] != '/')
             cfg.root += '/';
 
+        // 尝试扫描 errpages 目录
+        if (cfg.errpages) {
+            const dl = fs.readdirSync(cfg.root + cfg.errpages);
+            dl.forEach((itm) => {
+                const code = parseInt(itm);
+                if (!isNaN(code)){
+                    this[K_APP_ERRPAGES][code] = fs.readFileSync(cfg.root + cfg.errpages + '/' + itm, 'utf8');
+                }
+            });
+        }
+
         // 尝试扫描 root 所指目录
         if (cfg.app) {
-            const fs = require('fs');
             const dl = fs.readdirSync(cfg.root + cfg.app);
             dl.forEach((itm) => {
                 if (itm.substr(itm.length - 3).toLowerCase() == '.js')
@@ -104,8 +118,6 @@ module.exports = (__l)=>{return class {
         if (this[K_APP_CONFIG].static)
             srv.use(express.static(this[K_APP_CONFIG].root + this[K_APP_CONFIG].static));
         srv.all('*', async (req, res) => {
-            console.log(req.path);
-            //req.path = req.params['0'];
             if (req.path in this[K_APP_ROUTINE]) {
                 const func = this[K_APP_ROUTINE][req.path];
                 if (func[req.method]) {
@@ -126,7 +138,12 @@ module.exports = (__l)=>{return class {
                         }));
                     }
                     const ret2 = await func.proc(req, res, this);
-                    if (ret2) res.send(ret2);
+                    if (ret2) {
+                        if(typeof(ret2) == 'number' && ret2 in this[K_APP_ERRPAGES])
+                            res.status(ret2).send(this[K_APP_ERRPAGES][ret2]);
+                        else
+                            res.send(ret2);
+                    }
                 } else
                     res.status(400).send('Denine');
             } else
