@@ -68,15 +68,15 @@ module.exports = (__l)=>{return class {
                         this[K_APP_ROUTINE][p] = {
                             GET: true,
                             POST: true,
-                            pre: mod[p].pre ? mod[p].pre : V_APP_EMPTY_FUNC,
-                            proc: mod[p]
+                            pre: mod[p].pre ? mod[p].pre.bind(mod) : V_APP_EMPTY_FUNC,
+                            proc: mod[p].bind(mod)
                         }
                     } else if (typeof (mod[p] == 'object') && mod[p].proc) {
                         this[K_APP_ROUTINE][p] = {
                             GET: (mod[p].method && mod[p].method.indexOf('GET') >= 0),
                             POST: (mod[p].method && mod[p].method.indexOf('POST') >= 0),
-                            pre: mod[p].pre ? mod[p].pre : V_APP_EMPTY_FUNC,
-                            proc: mod[p].proc
+                            pre: mod[p].pre ? mod[p].pre.bind(mod) : V_APP_EMPTY_FUNC,
+                            proc: mod[p].proc.bind(mod)
                         }
                     }
                 }
@@ -104,8 +104,10 @@ module.exports = (__l)=>{return class {
         if (this[K_APP_CONFIG].static)
             srv.use(express.static(this[K_APP_CONFIG].root + this[K_APP_CONFIG].static));
         srv.all('*', async (req, res) => {
-            if (req.url in this[K_APP_ROUTINE]) {
-                const func = this[K_APP_ROUTINE][req.url];
+            console.log(req.path);
+            //req.path = req.params['0'];
+            if (req.path in this[K_APP_ROUTINE]) {
+                const func = this[K_APP_ROUTINE][req.path];
                 if (func[req.method]) {
                     if (req.method == 'POST') {
                         const ret = await func.pre(req, res, this);
