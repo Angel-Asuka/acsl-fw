@@ -47,7 +47,6 @@ class Transaction {
             }
         }
         const sql_str = `INSERT INTO \`${table}\` (\`${keys.join('`,`')}\`)VALUES(${vals.join(',')})`
-        console.log(sql_str)
         const ret = await(this.query(sql_str, data))
         if (ret) return ret.result.insertId
         return null
