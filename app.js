@@ -86,6 +86,8 @@ module.exports = (__l)=>{return class {
         if (cfg.template)
             this.Template = new this.Langley.Template({root:cfg.root + cfg.template})
 
+        this.Http = new this.Langley.HTTP()
+
         // 预加载所有模块
         for (let m of cfg.modules) {
             const mod = require(cfg.root + m);
@@ -136,6 +138,8 @@ module.exports = (__l)=>{return class {
     get modules() { return this[K_APP_MODULES]; }
     get config() { return this[K_APP_CONFIG]; }
     get data() { return this[K_APP_CONFIG_DATA]; }
+
+    get timestamp() { return Math.floor(Date.now()/1000); }
 
     [K_APP_RESPONSE](r, res){
         if(typeof(r) == 'number' && r in this[K_APP_ERRPAGES])

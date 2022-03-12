@@ -7,5 +7,6 @@ loadModule('App')
 loadModule('DB')
 loadModule('Template')
 loadModule('MDB')
+loadModule('HTTP')
 
 module.exports = Langley
