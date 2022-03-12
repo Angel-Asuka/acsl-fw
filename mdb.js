@@ -105,6 +105,19 @@ module.exports = (__l)=>{return class {
         })
     }
 
+    async hseto (key, obj) {
+        if (!obj) return null
+        let jobs = []
+        for (let f in obj)
+            jobs.push(this.hset(key, f, obj[f]))
+        let cc = await Promise.all(jobs)
+        for (let err of cc){
+            if (err)
+                return err
+        }
+        return null
+    }
+
     async hdel (key, fields, val) {
         return new Promise(resolve => {
             this[K_MDB_CONNECTION_POOL].hdel(key, fields, val, (err) => {

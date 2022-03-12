@@ -161,7 +161,7 @@ module.exports = (__l)=>{return class {
                 if (func[req.method]) {
                     if (this[K_APP_HOOK_PRE]){
                         const hret = await this[K_APP_HOOK_PRE](req, res, this)
-                        if (hret){
+                        if (hret != null){
                             if (typeof(hret) == 'boolean'){
                                 if (!hret) return
                             }else
