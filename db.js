@@ -36,6 +36,7 @@ module.exports = (__l)=>{return class {
         return new Promise((resolve, reject) => {
             this.connection().then((conn)=>{
                 conn.query(sql_str, params, function (err, result) {
+                    conn.end()
                     if (err)
                         resolve({ ok: false, result: err })
                     else

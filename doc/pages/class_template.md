@@ -4,7 +4,7 @@
 ## Description
 Template 类描述了一个模板引擎对象， 提供基于 javascript 的模板渲染功能。
 ## Constructor
-App 类的构造方法原型如下：
+Template 类的构造方法原型如下：
 ```js
 function Template(cfg);
 ```
@@ -68,7 +68,7 @@ data = {
 </p>
 ```
 
-上例中通过 for 和 if 来控制模板渲染的行为，可以循环渲染一端模板，也可以根据需要控制要渲染或者不渲染哪些模板内容。需要注意的是，模板脚本采用的是完整的 `javascrip`， 上例等价于下面的 `javascript` 代码：
+上例中通过 for 和 if 来控制模板渲染的行为，可以循环渲染一段模板，也可以根据需要控制要渲染或者不渲染哪些模板内容。需要注意的是，模板脚本采用的是完整的 `javascrip`， 上例等价于下面的 `javascript` 代码：
 
 ```js
 print('<p>')
