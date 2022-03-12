@@ -34,16 +34,16 @@ module.exports = (__l)=>{return class {
 
     async query(sql_str, params){
         return new Promise((resolve, reject) => {
-            if (!this.reconnect()) {
-                resolve({ ok: false, result: 'CON_FAILED!' });
-                return;
-            }
-            this.connection.query(sql_str, params, function (err, result) {
-                if (err)
-                    resolve({ ok: false, result: err });
-                else
-                    resolve({ ok: true, result: result });
-            });
-        });
+            this.connection().then((conn)=>{
+                conn.query(sql_str, params, function (err, result) {
+                    if (err)
+                        resolve({ ok: false, result: err })
+                    else
+                        resolve({ ok: true, result: result })
+                });
+            }).catch(()=>{
+                resolve({ok:false, result: 'CON_FAILED!'})
+            })
+        })
     }
 }}

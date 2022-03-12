@@ -11,6 +11,12 @@
  *      static :  静态路径
  *      template : 模板路径
  *      errpages : HTTP 状态页面路径
+ *      data : 之后可由 app.data 访问
+ *      mod : 添加到 app.modules 中的自定义模块
+ *      hooks : {
+ *          pre_request : function(req, rsp, app) 请求前钩子
+ *          post_request : function(req, rsp, app, ret) 请求后钩子
+ *      }
  * }
  * 
  * 模块的module.exports中：
@@ -22,16 +28,21 @@
  * 
  */
 
-const fs = require('fs');
-const express = require('express');
-const bodyParser = require('body-parser');
-const cookieParser = require('cookie-parser');
+const fs = require('fs')
+const express = require('express')
+const bodyParser = require('body-parser')
+const cookieParser = require('cookie-parser')
 
-const K_APP_CONFIG = Symbol();
-const K_APP_ROUTINE = Symbol();
-const K_APP_MODULES = Symbol();
-const K_APP_ERRPAGES = Symbol();
-const K_APP_CONFIG_DATA = Symbol();
+const K_APP_CONFIG = Symbol()
+const K_APP_ROUTINE = Symbol()
+const K_APP_MODULES = Symbol()
+const K_APP_ERRPAGES = Symbol()
+const K_APP_CONFIG_DATA = Symbol()
+const K_APP_HOOK_PRE = Symbol()
+const K_APP_HOOK_POST = Symbol()
+
+const K_APP_RESPONSE = Symbol()
+
 const V_APP_EMPTY_FUNC = () => { }
 
 
@@ -108,11 +119,30 @@ module.exports = (__l)=>{return class {
             if (this[K_APP_MODULES][m].init)
                 this[K_APP_MODULES][m].init(this);
         }
+
+        // 将配置的模块加入模块列表
+        if (cfg.mod){
+            for (let m in cfg.mod)
+                this[K_APP_MODULES][m] = cfg.mod[m]
+        }
+
+        // 写入钩子
+        if (cfg.hooks){
+            if (cfg.hooks.pre_request) this[K_APP_HOOK_PRE] = cfg.hooks.pre_request
+            if (cfg.hooks.post_request) this[K_APP_HOOK_POST] = cfg.hooks.post_request
+        }
     }
 
     get modules() { return this[K_APP_MODULES]; }
     get config() { return this[K_APP_CONFIG]; }
     get data() { return this[K_APP_CONFIG_DATA]; }
+
+    [K_APP_RESPONSE](r){
+        if(typeof(r) == 'number' && r in this[K_APP_ERRPAGES])
+            res.status(r).send(this[K_APP_ERRPAGES][r])
+        else
+            res.send(r)
+    }
 
     run() {
         if (!this[K_APP_CONFIG].port) this[K_APP_CONFIG].port = 80;
@@ -125,6 +155,10 @@ module.exports = (__l)=>{return class {
             if (req.path in this[K_APP_ROUTINE]) {
                 const func = this[K_APP_ROUTINE][req.path];
                 if (func[req.method]) {
+                    if (this[K_APP_HOOK_PRE]){
+                        const hret = this[K_APP_HOOK_PRE](req, res, this)
+                        if (hret) return this[K_APP_RESPONSE](hret)
+                    }
                     if (req.method == 'POST') {
                         const ret = await func.pre(req, res, this);
                         if (ret) {
@@ -141,13 +175,9 @@ module.exports = (__l)=>{return class {
                             });
                         }));
                     }
-                    const ret2 = await func.proc(req, res, this);
-                    if (ret2) {
-                        if(typeof(ret2) == 'number' && ret2 in this[K_APP_ERRPAGES])
-                            res.status(ret2).send(this[K_APP_ERRPAGES][ret2]);
-                        else
-                            res.send(ret2);
-                    }
+                    let ret2 = await func.proc(req, res, this);
+                    if (this[K_APP_HOOK_POST]) ret2 = this[K_APP_HOOK_POST](req, res, this, ret2)
+                    if (ret2) this[K_APP_RESPONSE](ret2)
                 } else
                     res.status(400).send('Denine');
             } else
