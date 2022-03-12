@@ -137,7 +137,7 @@ module.exports = (__l)=>{return class {
     get config() { return this[K_APP_CONFIG]; }
     get data() { return this[K_APP_CONFIG_DATA]; }
 
-    [K_APP_RESPONSE](r){
+    [K_APP_RESPONSE](r, res){
         if(typeof(r) == 'number' && r in this[K_APP_ERRPAGES])
             res.status(r).send(this[K_APP_ERRPAGES][r])
         else
@@ -156,8 +156,13 @@ module.exports = (__l)=>{return class {
                 const func = this[K_APP_ROUTINE][req.path];
                 if (func[req.method]) {
                     if (this[K_APP_HOOK_PRE]){
-                        const hret = this[K_APP_HOOK_PRE](req, res, this)
-                        if (hret) return this[K_APP_RESPONSE](hret)
+                        const hret = await this[K_APP_HOOK_PRE](req, res, this)
+                        if (hret){
+                            if (typeof(hret) == 'number' && hret == 0)
+                                return
+                            else
+                                return this[K_APP_RESPONSE](hret, res)
+                        }
                     }
                     if (req.method == 'POST') {
                         const ret = await func.pre(req, res, this);
@@ -176,8 +181,8 @@ module.exports = (__l)=>{return class {
                         }));
                     }
                     let ret2 = await func.proc(req, res, this);
-                    if (this[K_APP_HOOK_POST]) ret2 = this[K_APP_HOOK_POST](req, res, this, ret2)
-                    if (ret2) this[K_APP_RESPONSE](ret2)
+                    if (this[K_APP_HOOK_POST]) ret2 = await this[K_APP_HOOK_POST](req, res, this, ret2)
+                    if (ret2) this[K_APP_RESPONSE](ret2, res)
                 } else
                     res.status(400).send('Denine');
             } else
