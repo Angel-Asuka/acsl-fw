@@ -5,6 +5,7 @@
  * class App
  * cfg = {
  *      root : [OPTIONAL] 根目录
+ *      addr : [OPTIONAL] 监听地址
  *      port : 监听端口，默认80
  *      app : [OPTIONAL] 应用目录，App 会自动扫描并加载这个目录中的所有.js文件
  *      modules : [OPTIONAL] 模块列表
@@ -192,8 +193,7 @@ module.exports = (__l)=>{return class {
             } else
                 res.status(404).send('Not Found.');
         });
-        srv.listen(this[K_APP_CONFIG].port);
-        console.log(this[K_APP_CONFIG].port);
+        srv.listen(this[K_APP_CONFIG].port, this[K_APP_CONFIG].addr);
         return true;
     }
 }}
