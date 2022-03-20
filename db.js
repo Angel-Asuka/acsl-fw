@@ -109,10 +109,11 @@ module.exports = (__l)=>{return class {
     async connection() {
         return new Promise((resolve, reject) => {
             this.pool.getConnection((err, conn) => {
-                if (err)
-                    resolve(null);
-                else
-                    resolve(conn);
+                if (err){
+                    console.log(err)
+                    resolve(null)
+                }else
+                    resolve(conn)
             });
         });
     }
@@ -147,7 +148,10 @@ module.exports = (__l)=>{return class {
         if (!conn) return null
         return new Promise(resolve => {
             conn.beginTransaction(err => {
-                if (err) resolve(null)
+                if (err){
+                    console.log(err)
+                    resolve(null)
+                }
                 resolve(new Transaction(conn))
             })
         })

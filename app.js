@@ -14,9 +14,10 @@
  *      errpages : HTTP 状态页面路径
  *      data : 之后可由 app.data 访问
  *      mod : 添加到 app.modules 中的自定义模块
+ *      init : async function(app) 初始化函数，App.run 的时候会在初始化完成、开始接受请求前调用这个函数。
  *      hooks : {
- *          pre_request : function(req, rsp, app) 请求前钩子
- *          post_request : function(req, rsp, app, ret) 请求后钩子
+ *          pre_request : async function(req, rsp, app) 请求前钩子
+ *          post_request : async function(req, rsp, app, ret) 请求后钩子
  *      }
  * }
  * 
@@ -41,6 +42,7 @@ const K_APP_ERRPAGES = Symbol()
 const K_APP_CONFIG_DATA = Symbol()
 const K_APP_HOOK_PRE = Symbol()
 const K_APP_HOOK_POST = Symbol()
+const K_APP_USER_INIT = Symbol()
 
 const K_APP_RESPONSE = Symbol()
 
@@ -88,6 +90,7 @@ module.exports = (__l)=>{return class {
             this.Template = new this.Langley.Template({root:cfg.root + cfg.template})
 
         this.Http = new this.Langley.HTTP()
+        this.Utils = new this.Langley.UTILS()
 
         // 预加载所有模块
         for (let m of cfg.modules) {
@@ -117,12 +120,6 @@ module.exports = (__l)=>{return class {
                 this[K_APP_MODULES][m] = mod;
         }
 
-        // 初始化模块
-        for (let m in this[K_APP_MODULES]) {
-            if (this[K_APP_MODULES][m].init)
-                this[K_APP_MODULES][m].init(this);
-        }
-
         // 将配置的模块加入模块列表
         if (cfg.mod){
             for (let m in cfg.mod)
@@ -134,6 +131,10 @@ module.exports = (__l)=>{return class {
             if (cfg.hooks.pre_request) this[K_APP_HOOK_PRE] = cfg.hooks.pre_request
             if (cfg.hooks.post_request) this[K_APP_HOOK_POST] = cfg.hooks.post_request
         }
+
+        // 记录初始化函数
+        if (cfg.init)
+            this[K_APP_USER_INIT] = cfg.init
     }
 
     get modules() { return this[K_APP_MODULES]; }
@@ -149,7 +150,7 @@ module.exports = (__l)=>{return class {
             res.send(r)
     }
 
-    run() {
+    async run() {
         if (!this[K_APP_CONFIG].port) this[K_APP_CONFIG].port = 80;
         const srv = express();
         srv.use(bodyParser.urlencoded({ extended: true }));
@@ -193,6 +194,16 @@ module.exports = (__l)=>{return class {
             } else
                 res.status(404).send('Not Found.');
         });
+
+        // 初始化模块
+        for (let m in this[K_APP_MODULES]) {
+            if (this[K_APP_MODULES][m].init)
+                await this[K_APP_MODULES][m].init(this)
+        }
+
+        if (this[K_APP_USER_INIT])
+            await this[K_APP_USER_INIT](this)
+        
         srv.listen(this[K_APP_CONFIG].port, this[K_APP_CONFIG].addr);
         return true;
     }
