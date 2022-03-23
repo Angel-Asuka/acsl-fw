@@ -16,6 +16,18 @@ module.exports = (__l)=>{return class {
             axios.get(url, param).then(response => {
                 resolve(response.data)
             }).catch(error => {
+                console.log(error)
+                resolve(null)
+            })
+        });
+    }
+
+    async post(url, data, headers) {
+        return new Promise((resolve)=>{
+            axios.post(url, data, headers?{headers:headers}:null).then(response => {
+                resolve(response.data)
+            }).catch(error => {
+                console.log(error)
                 resolve(null)
             })
         });
