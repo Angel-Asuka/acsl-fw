@@ -46,6 +46,8 @@ const K_APP_USER_INIT = Symbol()
 
 const K_APP_RESPONSE = Symbol()
 
+const REG_IP = /\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/
+
 const V_APP_EMPTY_FUNC = () => { }
 
 
@@ -161,6 +163,12 @@ module.exports = (__l)=>{return class {
             if (req.path in this[K_APP_ROUTINE]) {
                 const func = this[K_APP_ROUTINE][req.path];
                 if (func[req.method]) {
+                    let ipstr = req.headers['x-forwarded-for'] || req.ip || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress || ''
+                    const iparr = ipstr.split(',')
+                    if(iparr.length) ipstr = iparr[0]
+                    const ip = REG_IP.exec(ipstr)
+                    req.clientAddress = ip[0]
+
                     if (this[K_APP_HOOK_PRE]){
                         const hret = await this[K_APP_HOOK_PRE](req, res, this)
                         if (hret != null){
