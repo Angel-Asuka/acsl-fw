@@ -163,44 +163,49 @@ module.exports = (__l)=>{return class {
             if (req.path in this[K_APP_ROUTINE]) {
                 const func = this[K_APP_ROUTINE][req.path];
                 if (func[req.method]) {
-                    let ipstr = req.headers['x-forwarded-for'] || req.ip || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress || ''
-                    const iparr = ipstr.split(',')
-                    if(iparr.length) ipstr = iparr[0]
-                    const ip = REG_IP.exec(ipstr)
-                    req.clientAddress = ip[0]
+                    try{
+                        let ipstr = req.headers['x-forwarded-for'] || req.ip || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress || ''
+                        const iparr = ipstr.split(',')
+                        if(iparr.length) ipstr = iparr[0]
+                        const ip = REG_IP.exec(ipstr)
+                        req.clientAddress = ip[0]
 
-                    if (this[K_APP_HOOK_PRE]){
-                        const hret = await this[K_APP_HOOK_PRE](req, res, this)
-                        if (hret != null){
-                            if (typeof(hret) == 'boolean'){
-                                if (!hret) return
-                            }else
-                                return this[K_APP_RESPONSE](hret, res)
+                        if (this[K_APP_HOOK_PRE]){
+                            const hret = await this[K_APP_HOOK_PRE](req, res, this)
+                            if (hret != null){
+                                if (typeof(hret) == 'boolean'){
+                                    if (!hret) return
+                                }else
+                                    return this[K_APP_RESPONSE](hret, res)
+                            }
                         }
-                    }
-                    if (req.method == 'POST') {
-                        const ret = await func.pre(req, res, this);
-                        if (ret) {
-                            res.send(ret);
-                            return;
+                        if (req.method == 'POST') {
+                            const ret = await func.pre(req, res, this);
+                            if (ret) {
+                                res.send(ret);
+                                return;
+                            }
+                            await (new Promise((r) => {
+                                req.rawBody = '';
+                                req.setEncoding('utf8');
+                                req.on('data', function (chk) { req.rawBody += chk });
+                                req.on('end', function () {
+                                    req.body = JSON.parse(req.rawBody);
+                                    r();
+                                });
+                            }));
                         }
-                        await (new Promise((r) => {
-                            req.rawBody = '';
-                            req.setEncoding('utf8');
-                            req.on('data', function (chk) { req.rawBody += chk });
-                            req.on('end', function () {
-                                req.body = JSON.parse(req.rawBody);
-                                r();
-                            });
-                        }));
+                        let ret2 = await func.proc(req, res, this);
+                        if (this[K_APP_HOOK_POST]) ret2 = await this[K_APP_HOOK_POST](req, res, this, ret2)
+                        if (ret2) this[K_APP_RESPONSE](ret2, res)
+                    }catch(e){
+                        console.log(e)
+                        res.status(500).send('Application Error')
                     }
-                    let ret2 = await func.proc(req, res, this);
-                    if (this[K_APP_HOOK_POST]) ret2 = await this[K_APP_HOOK_POST](req, res, this, ret2)
-                    if (ret2) this[K_APP_RESPONSE](ret2, res)
                 } else
-                    res.status(400).send('Denine');
+                    res.status(400).send('Denine')
             } else
-                res.status(404).send('Not Found.');
+                res.status(404).send('Not Found.')
         });
 
         // 初始化模块
