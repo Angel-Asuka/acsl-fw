@@ -20,6 +20,34 @@ module.exports = (__l)=>{return class {
         return sign.sign(privateKey, 'base64')
     }
 
+    Decode_AES_256_GCM(key, iv, add, encrypted, mac){
+        try{
+            if(!mac){
+                mac = encrypted.slice(-16)
+                encrypted = encrypted.slice(0, -16)
+            }
+            const decipher = crypto.createDecipheriv('AES-256-GCM', key, iv)
+            decipher.setAuthTag(mac)
+            decipher.setAAD(Buffer.from(add))
+            return Buffer.concat([
+                decipher.update(encrypted),
+                decipher.final()
+            ])
+        }catch(e){
+            console.log(e)
+            return null
+        }
+    }
+
+    parseJson(str){
+        try{
+            return JSON.parse(str)
+        }catch(e){
+            console.log(e)
+            return null
+        }
+    }
+
     randomHex(len){
         if(!len) len = 32
         const hash = crypto.createHash('sha256')
