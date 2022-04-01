@@ -15,23 +15,22 @@ const MySQL_Driver = require('mysql');
 
 const K_TRANSACTION_CONN = Symbol()
 
-class Transaction {
-    constructor(conn){
-        this[K_TRANSACTION_CONN] = conn
-    }
-
-    async query(sql_str, params){
-        return new Promise((resolve, reject) => {
-            this[K_TRANSACTION_CONN].query(sql_str, params, function (err, result) {
-                if (err)
-                    resolve({ ok: false, result: err })
-                else
-                    resolve({ ok: true, result: result })
-            })
-        })
-    }
-
+class DBBase {
+    constructor(){}
+    
     CURRENT_TIMESTAMP(){ return 'CURRENT_TIMESTAMP' }
+
+    async fetch(sql, param){
+        const ret = await this.query(sql, param)
+        if(ret.ok) return ret.result
+        return null
+    }
+
+    async fetchone(sql, param){
+        const ret = await this.query(sql, param)
+        if(ret.ok && ret.result.length) return ret.result[0]
+        return null
+    }
 
     async insert(table, values){
         const keys = [];
@@ -72,6 +71,26 @@ class Transaction {
         return ret.ok
     }
 
+}
+
+class Transaction extends DBBase {
+    constructor(conn){
+        super()
+        this[K_TRANSACTION_CONN] = conn
+    }
+
+    async query(sql_str, params){
+        return new Promise((resolve, reject) => {
+            this[K_TRANSACTION_CONN].query(sql_str, params, function (err, result) {
+                if (err)
+                    resolve({ ok: false, result: err })
+                else
+                    resolve({ ok: true, result: result })
+            })
+        })
+    }
+
+
     async commit(){
         return new Promise(resolve => {
             this[K_TRANSACTION_CONN].commit(err => {
@@ -98,12 +117,13 @@ class Transaction {
     }
 }
 
-module.exports = (__l)=>{return class {
+module.exports = (__l)=>{return class extends DBBase {
     constructor(cfg) {
-        this.Langley = __l;
+        super()
+        this.Langley = __l
         if (!cfg.connectionLimit)
-            cfg.connectionLimit = 10;
-        this.pool = MySQL_Driver.createPool(cfg);
+            cfg.connectionLimit = 10
+        this.pool = MySQL_Driver.createPool(cfg)
     }
 
     async connection() {
@@ -129,18 +149,6 @@ module.exports = (__l)=>{return class {
                     resolve({ ok: true, result: result })
             })
         })
-    }
-
-    async fetch(sql, param){
-        const ret = await this.query(sql, param)
-        if(ret.ok) return ret.result
-        return null
-    }
-
-    async fetchone(sql, param){
-        const ret = await this.query(sql, param)
-        if(ret.ok && ret.result.length) return ret.result[0]
-        return null
     }
 
     async begin(){

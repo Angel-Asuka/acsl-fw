@@ -13,11 +13,44 @@ module.exports = (__l)=>{return class {
         this.Langley = __l
     }
 
-    RSASHA256(privateKey, data, encoding){
-        if(!encoding) encoding = 'utf-8'
+    Signature_RSA_SHA256(privateKey, data){
         const sign = crypto.createSign('RSA-SHA256')
-        sign.update(new Buffer.from(data, encoding))
+        sign.update(data)
         return sign.sign(privateKey, 'base64')
+    }
+
+    Verify_RSA_SHA256(publicKey, data, sign){
+        const verify = crypto.createVerify('RSA-SHA256')
+        verify.update(data)
+        return verify.verify(publicKey, sign, 'base64')
+    }
+
+    Decode_AES_256_GCM(key, iv, add, encrypted, mac){
+        try{
+            if(!mac){
+                mac = encrypted.slice(-16)
+                encrypted = encrypted.slice(0, -16)
+            }
+            const decipher = crypto.createDecipheriv('AES-256-GCM', key, iv)
+            decipher.setAuthTag(mac)
+            decipher.setAAD(Buffer.from(add))
+            return Buffer.concat([
+                decipher.update(encrypted),
+                decipher.final()
+            ])
+        }catch(e){
+            console.log(e)
+            return null
+        }
+    }
+
+    parseJson(str){
+        try{
+            return JSON.parse(str)
+        }catch(e){
+            console.log(e)
+            return null
+        }
     }
 
     randomHex(len){
@@ -65,6 +98,10 @@ module.exports = (__l)=>{return class {
         return d.toString()
     }
 
+    parseTS(ts_str){
+        const d = new Date(ts_str)
+        return Math.floor(d.getTime() / 1000)
+    }
     
 
 }}
