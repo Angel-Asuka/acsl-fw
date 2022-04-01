@@ -11,9 +11,9 @@ module.exports = (__l)=>{return class {
         this.Langley = __l
     }
 
-    async get(url, param) {
+    async get(url, param, headers) {
         return new Promise((resolve)=>{
-            axios.get(url, param).then(response => {
+            axios.get(url, {params:param, headers:headers}).then(response => {
                 resolve(response.data)
             }).catch(error => {
                 console.log(error)
