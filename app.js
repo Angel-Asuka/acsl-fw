@@ -203,9 +203,9 @@ module.exports = (__l)=>{return class {
                         res.status(500).send('Application Error')
                     }
                 } else
-                    res.status(400).send('Denine');
+                    res.status(400).send('Denine')
             } else
-                res.status(404).send('Not Found.');
+                res.status(404).send('Not Found.')
         });
 
         // 初始化模块
