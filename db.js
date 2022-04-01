@@ -53,7 +53,7 @@ class DBBase {
 
     async update(table, values, where, condv){
         const vals = [];
-        const data = [];
+        let data = [];
         for (let k in values){
             if(typeof(values[k]) == 'function')
                 vals.push(`\`${k}\`=${values[k]()}`)
@@ -66,7 +66,9 @@ class DBBase {
             where = ` where ${where}`
             data = data.concat(condv)
         }
-        const sql_str = `UPDATE \`${table}\` SET \`${vals.join(',')}\`${where}`
+        const sql_str = `UPDATE \`${table}\` SET ${vals.join(',')}${where}`
+        console.log(sql_str)
+        console.log(data)
         const ret = await(this.query(sql_str, data))
         return ret.ok
     }
