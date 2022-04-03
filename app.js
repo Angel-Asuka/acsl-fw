@@ -190,7 +190,7 @@ module.exports = (__l)=>{return class {
                                 req.setEncoding('utf8');
                                 req.on('data', function (chk) { req.rawBody += chk });
                                 req.on('end', function () {
-                                    req.body = JSON.parse(req.rawBody);
+                                    req.body = this.Utils.parseJson(req.rawBody);
                                     r();
                                 });
                             }));

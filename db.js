@@ -67,8 +67,6 @@ class DBBase {
             data = data.concat(condv)
         }
         const sql_str = `UPDATE \`${table}\` SET ${vals.join(',')}${where}`
-        console.log(sql_str)
-        console.log(data)
         const ret = await(this.query(sql_str, data))
         return ret.ok
     }
