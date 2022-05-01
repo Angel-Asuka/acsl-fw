@@ -16,8 +16,14 @@
  *      mod : 添加到 app.modules 中的自定义模块
  *      init : async function(app) 初始化函数，App.run 的时候会在初始化完成、开始接受请求前调用这个函数。
  *      hooks : {
- *          pre_request : async function(req, rsp, app) 请求前钩子
- *          post_request : async function(req, rsp, app, ret) 请求后钩子
+ *          preprocessors : {           请求预处理器
+ *              xxx : async function(req, rsp, app)
+ *          },
+ *          postprocessors : {          请求后处理器
+ *              yyy : : async function(req, rsp, app, ret)
+ *          },
+ *          preprocessingChain : ['xxx'],   默认的预处理链
+ *          postprocessingChain : ['yyy']   默认的后处理链
  *      }
  * }
  * 
@@ -40,16 +46,15 @@ const K_APP_ROUTINE = Symbol()
 const K_APP_MODULES = Symbol()
 const K_APP_ERRPAGES = Symbol()
 const K_APP_CONFIG_DATA = Symbol()
-const K_APP_HOOK_PRE = Symbol()
-const K_APP_HOOK_POST = Symbol()
+const K_APP_PREPROCESSORS = Symbol()
+const K_APP_POSTPROCESSORS = Symbol()
+const K_APP_DEF_PREPROCESSINGCHAIN = Symbol()
+const K_APP_DEF_POSTPROCESSINGCHAIN = Symbol()
 const K_APP_USER_INIT = Symbol()
 
 const K_APP_RESPONSE = Symbol()
 
 const REG_IP = /\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/
-
-const V_APP_EMPTY_FUNC = () => { }
-
 
 module.exports = (__l)=>{return class {
     constructor(cfg) {
@@ -103,15 +108,21 @@ module.exports = (__l)=>{return class {
                         this[K_APP_ROUTINE][p] = {
                             GET: true,
                             POST: true,
-                            pre: mod[p].pre ? mod[p].pre.bind(mod) : V_APP_EMPTY_FUNC,
-                            proc: mod[p].bind(mod)
+                            preprocessingChain: null,
+                            postprocessingChain: null,
+                            proc: mod[p].bind(mod),
+                            mod: mod,
+                            path: p
                         }
                     } else if (typeof (mod[p] == 'object') && mod[p].proc) {
                         this[K_APP_ROUTINE][p] = {
                             GET: (mod[p].method && mod[p].method.indexOf('GET') >= 0),
                             POST: (mod[p].method && mod[p].method.indexOf('POST') >= 0),
-                            pre: mod[p].pre ? mod[p].pre.bind(mod) : V_APP_EMPTY_FUNC,
-                            proc: mod[p].proc.bind(mod)
+                            preprocessingChain: mod[p].preprocessingChain ? mod[p].preprocessingChain : null,
+                            postprocessingChain: mod[p].postprocessingChain ? mod[p].postprocessingChain : null,
+                            proc: mod[p].proc.bind(mod),
+                            mod: mod,
+                            path: p
                         }
                     }
                 }
@@ -128,10 +139,17 @@ module.exports = (__l)=>{return class {
                 this[K_APP_MODULES][m] = cfg.mod[m]
         }
 
-        // 写入钩子
+        this[K_APP_PREPROCESSORS] = {}
+        this[K_APP_POSTPROCESSORS] = {}
+        this[K_APP_DEF_PREPROCESSINGCHAIN] = []
+        this[K_APP_DEF_POSTPROCESSINGCHAIN] = []
+
+        // 记录前后处理器
         if (cfg.hooks){
-            if (cfg.hooks.pre_request) this[K_APP_HOOK_PRE] = cfg.hooks.pre_request
-            if (cfg.hooks.post_request) this[K_APP_HOOK_POST] = cfg.hooks.post_request
+            if(cfg.hooks.preprocessors) this[K_APP_PREPROCESSORS] = cfg.hooks.preprocessors
+            if(cfg.hooks.postprocessors) this[K_APP_POSTPROCESSORS] = cfg.hooks.postprocessors
+            if(cfg.hooks.preprocessingChain) this[K_APP_DEF_PREPROCESSINGCHAIN] = cfg.hooks.preprocessingChain
+            if(cfg.hooks.postprocessingChain) this[K_APP_DEF_POSTPROCESSINGCHAIN] = cfg.hooks.postprocessingChain
         }
 
         // 记录初始化函数
@@ -142,8 +160,15 @@ module.exports = (__l)=>{return class {
     get modules() { return this[K_APP_MODULES]; }
     get config() { return this[K_APP_CONFIG]; }
     get data() { return this[K_APP_CONFIG_DATA]; }
-
     get timestamp() { return Math.floor(Date.now()/1000); }
+
+    registerPreprocessor(name, proc) {
+        this[K_APP_PREPROCESSORS][name] = proc
+    }
+
+    registerPostprocessor(name, proc) {
+        this[K_APP_POSTPROCESSORS][name] = proc
+    }
 
     [K_APP_RESPONSE](r, res){
         if(typeof(r) == 'number' && r in this[K_APP_ERRPAGES])
@@ -164,27 +189,27 @@ module.exports = (__l)=>{return class {
                 const func = this[K_APP_ROUTINE][req.path];
                 if (func[req.method]) {
                     try{
+                        // 处理客户端 IP >> req.clientAddress
                         let ipstr = req.headers['x-forwarded-for'] || req.ip || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress || ''
                         const iparr = ipstr.split(',')
                         if(iparr.length) ipstr = iparr[0]
                         const ip = REG_IP.exec(ipstr)
                         req.clientAddress = ip[0]
 
-                        if (this[K_APP_HOOK_PRE]){
-                            const hret = await this[K_APP_HOOK_PRE](req, res, this)
-                            if (hret != null){
-                                if (typeof(hret) == 'boolean'){
-                                    if (!hret) return
-                                }else
-                                    return this[K_APP_RESPONSE](hret, res)
-                            }
+                        // 识别客户端类型 >> req.clientType
+                        if(req.headers['user-agent'].indexOf('MicroMessenger') >= 0)
+                            req.clientType = 'WeChat'
+                        else
+                            req.clientType = 'Unknown'
+
+                        // 执行预处理链
+                        for(let h of func.preprocessingChain){
+                            const hret = await h(req, res, this, func)
+                            if (hret != null) return this[K_APP_RESPONSE](hret, res)
                         }
+                        
+                        // 接收 Post 数据
                         if (req.method == 'POST') {
-                            const ret = await func.pre(req, res, this);
-                            if (ret) {
-                                res.send(ret);
-                                return;
-                            }
                             await (new Promise((r) => {
                                 req.rawBody = '';
                                 req.setEncoding('utf8');
@@ -195,8 +220,15 @@ module.exports = (__l)=>{return class {
                                 });
                             }));
                         }
+
+                        // 处理请求
                         let ret2 = await func.proc(req, res, this);
-                        if (this[K_APP_HOOK_POST]) ret2 = await this[K_APP_HOOK_POST](req, res, this, ret2)
+
+                        // 执行后处理链
+                        for(let h of func.postprocessingChain)
+                            ret2 = await h(req, res, this, func, ret2)
+
+                        // 执行返回（如果有）
                         if (ret2) this[K_APP_RESPONSE](ret2, res)
                     }catch(e){
                         console.log(e)
@@ -214,9 +246,32 @@ module.exports = (__l)=>{return class {
                 await this[K_APP_MODULES][m].init(this)
         }
 
+        // 全局初始化
         if (this[K_APP_USER_INIT])
             await this[K_APP_USER_INIT](this)
         
+        // 初始化前后处理器
+        for (let p in this[K_APP_ROUTINE]) {
+            const itm = this[K_APP_ROUTINE][p]
+            const pre = []
+            const post = []
+            const pre_lst = itm.preprocessingChain ? itm.preprocessingChain : this[K_APP_DEF_PREPROCESSINGCHAIN]
+            const post_lst = itm.postprocessingChain ? itm.postprocessingChain : this[K_APP_DEF_POSTPROCESSINGCHAIN]
+            for (let q of pre_lst){
+                if (typeof(q) == 'function')
+                    pre.push(q.bind(itm.mod))
+                else if (q in this[K_APP_PREPROCESSORS])
+                    pre.push(this[K_APP_PREPROCESSORS][q].bind(itm.mod))
+            }
+            for (let q of post_lst){
+                if (typeof(q) == 'function')
+                    post.push(q.bind(itm.mod))
+                else if (q in this[K_APP_POSTPROCESSORS])
+                    post.push(this[K_APP_POSTPROCESSORS][q].bind(itm.mod))
+            }
+            itm.preprocessingChain = pre
+            itm.postprocessingChain = post
+        }
         srv.listen(this[K_APP_CONFIG].port, this[K_APP_CONFIG].addr);
         return true;
     }

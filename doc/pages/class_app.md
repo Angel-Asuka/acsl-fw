@@ -13,21 +13,33 @@ function App(cfg);
 | Key | Type | Description |
 |-----|------|-------------|
 |root|string|项目根目录，之后一切关于路径的描述都以此为根。|
+|addr|string|监听地址。|
 |port|int|监听端口。|
 |app|string|应用目录，及应用代码所在目录，Langley 将自动扫描并读取其下所有 js 文件作为应用模块。|
 |modules|Array(string)|模块列表，如果想要加载不在应用目录中的模块，可以在这里指定其相对于 root 的路径。|
 |static|string|静态资源路径，该路径下静态资源将被映射到 / |
 |template|string|模板文件路径，如果指定本参数，app 将会建立一个 Template 对象用于渲染模板 |
+|errpages|string|HTTP错误页面路径 |
+|data|Any|用户数据，可以通过 app.data 访问|
+|mod|Array(Object)|自定义模块，可以通过 app.modules 访问|
+|init|async function|初始化函数， App.run 时，所有模块的 init 方法执行结束后执行。|
+|hooks|Object|钩子（前/后处理器）|
+
 
 ## Methods
 | Method | Description |
 |--------|-------------|
 | [run](./class_app_run.md) | 运行应用 |
+| [registerPreprocessor](./class_app_registerpreprocessor.md)|注册预处理器|
+| [registerPostprocessor](./class_app_registerpostprocessor.md)|注册后处理器|
 
 ## Property
 | Property | Type | Description |
 |----------|------|-------------|
 | modules | Object | 包含所有被 Langley 加载的模块，Key 为模块名 |
+| config | Object | 构造 App 时传入的配置对象 |
+| data | Any | 构造 App 时传入配置对象的 data 成员 |
+| timestamp | integer | 当前 Unix 时间戳 |
 | Template | Object | 如果在 cfg 中制定了 template 路径，app 初始化时将会自动以此为根目录创建一个 [Template](./class_template.md)，此后可使用该对象来进行模板渲染 |
 
 ## 关于模块加载
@@ -47,21 +59,21 @@ function App(cfg);
 | Key | Type | Description |
 |-----|------|-------------|
 | method | Array(string) | 允许的 HTTP 请求方法，支持 'GET' 和 'POST' |
-| pre | function | 请求预处理函数 |
+| preprocessingChain | Array(string/function) | 预处理链 |
+| postprocessingChain | Array(string/function) | 后处理链 |
 | proc | function | 请求处理函数 |
 
 **`method`** （可选）
 
 用于指定允许的 HTTP 请求方法，可以设置为 [`'GET'`]、[`'POST'`] 或 [`'GET'`, `'POST'`]。如果传入的请求方法不在 method 所指定的范围内，Langley 将直接返回 400。
 
-**`pre`** （可选）
+**`preprocessingChain`** （可选）
 
-用于指定预处理函数，当传入请求时，会首先执行这个函数，然后才会接收 POST 数据。需要注意的是，`只有当 pre 函数返回空时，Langley 才会继续接收 POST 数据并调用 proc 函数来处理请求。 否则 Langley 将停止处理该请求，并将 pre 返回的数据返回给远端。额外地，如果 pre 返回 true， Langley 将停停止处理该请求，但不会将 true 返回给远端。 pre 需要自行调用 rsp.send 方法来向远端返回数据。`
+用于指定预处理链，当传入请求时，会首先按顺序执行这个链条，然后才会接收 POST 数据。参考 [预处理链](./class_app_preprocessing.md)
 
-pre 函数原型如下：
-``` js
-function pre(req, rsp){}
-```
+**`postprocessingChain`** （可选）
+
+用于指定后处理链，请求处理完后，按顺序执行所有后处理函数。参考 [后处理链](./class_app_postprocessing.md)
 
 **`proc`**
 
@@ -69,10 +81,10 @@ function pre(req, rsp){}
 
 proc 函数原型如下：
 ``` js
-function post(req, rsp){}
+function proc(req, rsp, app){}
 ```
 
-`在一次请求中，传入 pre 和 proc 的 req 和 rsp 对象是相同的，因此可以利用这两个对象来在 pre 和 proc 间同步数据`
+`在一次请求中，传入所有前后处理器和 proc 的 req 和 rsp 对象是相同的，因此可以利用这两个对象来在前后处理器和 proc 间同步数据`
 
 **`简单模式`**
 
@@ -101,9 +113,16 @@ module.exports = {
     // 完整定义一个 HTTP 接口
     '/c' : {
         method : ['POST'],
-        pre : (req, rsp)=>{
-            // ... DO SOME CHECK HERE ...
-        },
+        preprocessingChain : ['aa', 'bb', 
+            (req, rsp, app, route)=>{
+                // ... DO SOME CHECK HERE ...
+            }
+        ],
+        postprocessingChain : ['cc','dd',
+            (req, rsp, app, route, ret)=>{
+                // ... DO SOME PROCESS HERE ...
+            }
+        ]
         proc : (req, rsp)=>{ return 'Called c'; }
     }
 }
