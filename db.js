@@ -48,6 +48,7 @@ class DBBase {
         const sql_str = `INSERT INTO \`${table}\` (\`${keys.join('`,`')}\`)VALUES(${vals.join(',')})`
         const ret = await(this.query(sql_str, data))
         if (ret.ok) return ret.result.insertId
+        console.log(ret)
         return null
     }
 
@@ -169,7 +170,9 @@ module.exports = (__l)=>{return class extends DBBase {
         const trans = await this.begin()
         if(await func(trans))
             return await trans.commit()
-        else
-            return await trans.rollback()
+        else{
+            await trans.rollback()
+            return false
+        }
     }
 }}

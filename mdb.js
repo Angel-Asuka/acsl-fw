@@ -59,10 +59,7 @@ module.exports = (__l)=>{return class {
     async expire (key, val) {
         return new Promise(resolve => {
             this[K_MDB_CONNECTION_POOL].expire(key, val, (err, val) => {
-                if (err)
-                    resolve(null)
-                else
-                    resolve(val)
+                resolve(err)
             })
         })
     }

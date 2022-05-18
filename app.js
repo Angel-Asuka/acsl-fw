@@ -115,6 +115,7 @@ module.exports = (__l)=>{return class {
                             path: p
                         }
                     } else if (typeof (mod[p] == 'object') && mod[p].proc) {
+                        if(mod[p].method == null) mod[p].method = ['GET', 'POST']
                         this[K_APP_ROUTINE][p] = {
                             GET: (mod[p].method && mod[p].method.indexOf('GET') >= 0),
                             POST: (mod[p].method && mod[p].method.indexOf('POST') >= 0),
@@ -190,7 +191,7 @@ module.exports = (__l)=>{return class {
                 if (func[req.method]) {
                     try{
                         // 处理客户端 IP >> req.clientAddress
-                        let ipstr = req.headers['x-forwarded-for'] || req.ip || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress || ''
+                        let ipstr = req.headers['x-forwarded-for'] || req.headers['X-Real-IP'] || req.ip || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress || ''
                         const iparr = ipstr.split(',')
                         if(iparr.length) ipstr = iparr[0]
                         const ip = REG_IP.exec(ipstr)
@@ -205,7 +206,9 @@ module.exports = (__l)=>{return class {
                         // 执行预处理链
                         for(let h of func.preprocessingChain){
                             const hret = await h(req, res, this, func)
-                            if (hret != null) return this[K_APP_RESPONSE](hret, res)
+                            if (typeof(hret) == 'boolean'){
+                                if (hret != true) return;
+                            } else if (hret != null) return this[K_APP_RESPONSE](hret, res)
                         }
                         
                         // 接收 Post 数据
@@ -234,8 +237,10 @@ module.exports = (__l)=>{return class {
                         console.log(e)
                         res.status(500).send('Application Error')
                     }
-                } else
+                } else {
+                    console.log(`Unsupport method ${req.method} in ${func.path}`)
                     res.status(400).send('Denine')
+                }
             } else
                 res.status(404).send('Not Found.')
         });

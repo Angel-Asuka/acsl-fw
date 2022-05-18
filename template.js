@@ -17,11 +17,9 @@ const K_TEMPLATE_CACHE = Symbol()
 const K_TEMPLATE_BEGIN_MARK = Symbol()
 const K_TEMPLATE_END_MARK = Symbol()
 
-
-
 function compile(name, lupd, str, bm, em){
     let res = []
-    let src = 'module.exports=(res, data)=>{let ___output = ""; const print=function(){for(let v of arguments) ___output += v;}\n'
+    let src = 'module.exports=(res, data, ___inc___)=>{let ___output = ""; const print=function(){for(let v of arguments) ___output += v;}\nconst include=function(p,d){print(___inc___(p,d));}\n'
     let s = str
 
     while(s.length){
@@ -91,7 +89,6 @@ module.exports = (__l)=>{return class {
             this[K_TEMPLATE_END_MARK] = this[K_TEMPLATE_CFG].end_mark
         else
             this[K_TEMPLATE_END_MARK] = '}-->'
-
     }
 
     makeCache(fn) {
@@ -112,7 +109,7 @@ module.exports = (__l)=>{return class {
     render(fn, data) {
         if(this.makeCache(fn)){
             const proc = this[K_TEMPLATE_CACHE][fn]
-            return proc.func(proc.res, data)
+            return proc.func(proc.res, data, this.render.bind(this))
         }
         return ""
     }
