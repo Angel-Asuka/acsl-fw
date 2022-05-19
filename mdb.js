@@ -8,6 +8,7 @@
         password: 【可选】数据库密码,
         max_clients: 【可选】最大连接数
         db: 【可选】数据库编号,
+        prefix: 【可选】键名前缀
     }
 */
 
@@ -15,6 +16,7 @@ const Redis_Driver = require('redis')
 const Redis_ConnectionPool = require('redis-connection-pool')
 
 const K_MDB_CONNECTION_POOL = Symbol()
+const K_MDB_KEY_PREFIX = Symbol()
 
 module.exports = (__l)=>{return class {
     constructor(cfg) {
@@ -34,12 +36,13 @@ module.exports = (__l)=>{return class {
                 auth_pass: cfg.password
             }
         }
+        this[K_MDB_KEY_PREFIX] = cfg.prefix || ''
         this[K_MDB_CONNECTION_POOL] = Redis_ConnectionPool('langleyRedisPool', redis_cfg)
     }
 
     async set (key, val) {
         return new Promise(resolve => {
-            this[K_MDB_CONNECTION_POOL].set(key, val, (err) => {
+            this[K_MDB_CONNECTION_POOL].set(this[K_MDB_KEY_PREFIX]+key, val, (err) => {
                 resolve(err)
             })
         })
@@ -47,7 +50,7 @@ module.exports = (__l)=>{return class {
 
     async get (key) {
         return new Promise(resolve => {
-            this[K_MDB_CONNECTION_POOL].get(key, (err, val) => {
+            this[K_MDB_CONNECTION_POOL].get(this[K_MDB_KEY_PREFIX]+key, (err, val) => {
                 if (err)
                     resolve(null)
                 else
@@ -58,7 +61,7 @@ module.exports = (__l)=>{return class {
 
     async expire (key, val) {
         return new Promise(resolve => {
-            this[K_MDB_CONNECTION_POOL].expire(key, val, (err, val) => {
+            this[K_MDB_CONNECTION_POOL].expire(this[K_MDB_KEY_PREFIX]+key, val, (err, val) => {
                 resolve(err)
             })
         })
@@ -66,7 +69,7 @@ module.exports = (__l)=>{return class {
 
     async del (key) {
         return new Promise(resolve => {
-            this[K_MDB_CONNECTION_POOL].del(key, (err) => {
+            this[K_MDB_CONNECTION_POOL].del(this[K_MDB_KEY_PREFIX]+key, (err) => {
                 resolve(err)
             })
         })
@@ -74,7 +77,7 @@ module.exports = (__l)=>{return class {
 
     async hget (key, field, val) {
         return new Promise(resolve => {
-            this[K_MDB_CONNECTION_POOL].hget(key, field, (err, val) => {
+            this[K_MDB_CONNECTION_POOL].hget(this[K_MDB_KEY_PREFIX]+key, field, (err, val) => {
                 if (err)
                     resolve(null)
                 else
@@ -85,7 +88,7 @@ module.exports = (__l)=>{return class {
 
     async hgetall (key, val) {
         return new Promise(resolve => {
-            this[K_MDB_CONNECTION_POOL].hgetall(key, (err, val) => {
+            this[K_MDB_CONNECTION_POOL].hgetall(this[K_MDB_KEY_PREFIX]+key, (err, val) => {
                 if (err)
                     resolve(null)
                 else
@@ -96,7 +99,7 @@ module.exports = (__l)=>{return class {
 
     async hset (key, field, val) {
         return new Promise(resolve => {
-            this[K_MDB_CONNECTION_POOL].hset(key, field, val, (err) => {
+            this[K_MDB_CONNECTION_POOL].hset(this[K_MDB_KEY_PREFIX]+key, field, val, (err) => {
                 resolve(err)
             })
         })
@@ -106,7 +109,7 @@ module.exports = (__l)=>{return class {
         if (!obj) return null
         let jobs = []
         for (let f in obj)
-            jobs.push(this.hset(key, f, obj[f]))
+            jobs.push(this.hset(this[K_MDB_KEY_PREFIX]+key, f, obj[f]))
         let cc = await Promise.all(jobs)
         for (let err of cc){
             if (err)
@@ -117,7 +120,7 @@ module.exports = (__l)=>{return class {
 
     async hdel (key, fields, val) {
         return new Promise(resolve => {
-            this[K_MDB_CONNECTION_POOL].hdel(key, fields, val, (err) => {
+            this[K_MDB_CONNECTION_POOL].hdel(this[K_MDB_KEY_PREFIX]+key, fields, val, (err) => {
                 resolve(err)
             })
         })
@@ -125,7 +128,7 @@ module.exports = (__l)=>{return class {
 
     async brpop (key) {
         return new Promise(resolve => {
-            this[K_MDB_CONNECTION_POOL].brpop(key, (err, val) => {
+            this[K_MDB_CONNECTION_POOL].brpop(this[K_MDB_KEY_PREFIX]+key, (err, val) => {
                 if (err)
                     resolve(null)
                 else
@@ -136,7 +139,7 @@ module.exports = (__l)=>{return class {
 
     async blpop (key) {
         return new Promise(resolve => {
-            this[K_MDB_CONNECTION_POOL].blpop(key, (err, val) => {
+            this[K_MDB_CONNECTION_POOL].blpop(this[K_MDB_KEY_PREFIX]+key, (err, val) => {
                 if (err)
                     resolve(null)
                 else
@@ -147,7 +150,7 @@ module.exports = (__l)=>{return class {
 
     async rpush (key, val) {
         return new Promise(resolve => {
-            this[K_MDB_CONNECTION_POOL].rpush(key, val, (err) => {
+            this[K_MDB_CONNECTION_POOL].rpush(this[K_MDB_KEY_PREFIX]+key, val, (err) => {
                 resolve(err)
             })
         })
@@ -155,7 +158,7 @@ module.exports = (__l)=>{return class {
 
     async lpush (key, val) {
         return new Promise(resolve => {
-            this[K_MDB_CONNECTION_POOL].lpush(key, val, (err) => {
+            this[K_MDB_CONNECTION_POOL].lpush(this[K_MDB_KEY_PREFIX]+key, val, (err) => {
                 resolve(err)
             })
         })
