@@ -109,7 +109,7 @@ module.exports = (__l)=>{return class {
         if (!obj) return null
         let jobs = []
         for (let f in obj)
-            jobs.push(this.hset(this[K_MDB_KEY_PREFIX]+key, f, obj[f]))
+            jobs.push(this.hset(key, f, obj[f]))
         let cc = await Promise.all(jobs)
         for (let err of cc){
             if (err)
