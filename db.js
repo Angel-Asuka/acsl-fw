@@ -23,12 +23,14 @@ class DBBase {
     async fetch(sql, param){
         const ret = await this.query(sql, param)
         if(ret.ok) return ret.result
+        console.log(ret)
         return null
     }
 
     async fetchone(sql, param){
         const ret = await this.query(sql, param)
         if(ret.ok && ret.result.length) return ret.result[0]
+        if(!ret.ok) console.log(ret)
         return null
     }
 
@@ -69,6 +71,7 @@ class DBBase {
         }
         const sql_str = `UPDATE \`${table}\` SET ${vals.join(',')}${where}`
         const ret = await(this.query(sql_str, data))
+        if(!ret.ok) console.log(ret)
         return ret.ok
     }
 
