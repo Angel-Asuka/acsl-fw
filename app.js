@@ -96,8 +96,8 @@ module.exports = (__l)=>{return class {
         if (cfg.template)
             this.Template = new this.Langley.Template({root:cfg.root + cfg.template})
 
-        this.Http = new this.Langley.HTTP()
-        this.Utils = new this.Langley.UTILS()
+        this.Http = this.Langley.Http
+        this.Utils = this.Langley.Utils
 
         // 预加载所有模块
         for (let m of cfg.modules) {
@@ -195,7 +195,10 @@ module.exports = (__l)=>{return class {
                         const iparr = ipstr.split(',')
                         if(iparr.length) ipstr = iparr[0]
                         const ip = REG_IP.exec(ipstr)
-                        req.clientAddress = ip[0]
+                        if(ip)
+                            req.clientAddress = ip[0]
+                        else
+                            req.clientAddress = ipstr
 
                         // 识别客户端类型 >> req.clientType
                         if(req.headers['user-agent'].indexOf('MicroMessenger') >= 0)

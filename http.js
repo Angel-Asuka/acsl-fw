@@ -6,7 +6,7 @@
 
 const axios = require('axios')
 
-module.exports = (__l)=>{return class {
+module.exports = (__l)=>{return new class {
     constructor(cfg) {
         this.Langley = __l
     }

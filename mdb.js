@@ -12,7 +12,6 @@
     }
 */
 
-const Redis_Driver = require('redis')
 const Redis_ConnectionPool = require('redis-connection-pool')
 
 const K_MDB_CONNECTION_POOL = Symbol()

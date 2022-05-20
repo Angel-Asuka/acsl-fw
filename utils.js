@@ -4,6 +4,7 @@
     工具模块
 */
 
+const fs = require('fs')
 const uuid = require('uuid')
 const crypto = require('crypto')
 const cp = require('child_process')
@@ -102,6 +103,38 @@ module.exports = (__l)=>{return class {
         const d = new Date(ts_str)
         return Math.floor(d.getTime() / 1000)
     }
-    
+
+    async fopen(fn, mode){
+        return new Promise((resolve)=>{
+            fs.open(fn, mode, (err, fd)=>{
+                if(err){
+                    console.log(err)
+                    resolve(null)
+                }else
+                    resolve(fd)
+            })
+        })
+    }
+
+    async fwrite(fd, buffer, offset, length, position){
+        return new Promise((resolve)=>{
+            fs.write(fd, buffer, offset, length, position, (err, bytesWritten, buffer)=>{
+                if(err) console.log(err)
+                resolve(err ? -1 : bytesWritten)
+            })
+        })
+    }
+
+    async fclose(fd){
+        return new Promise((resolve)=>{fs.close(fd, resolve)})
+    }
+
+    async saveBuffer(fn, buffer){
+        const fd = await this.fopen(fn, 'w')
+        if(!fd) return false
+        const wb = await this.fwrite(fd, buffer)
+        await this.fclose(fd)
+        return (wb == buffer.byteLength)
+    }
 
 }}
