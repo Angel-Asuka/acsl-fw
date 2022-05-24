@@ -174,6 +174,8 @@ module.exports = (__l)=>{return class {
     [K_APP_RESPONSE](r, res){
         if(typeof(r) == 'number' && r in this[K_APP_ERRPAGES])
             res.status(r).send(this[K_APP_ERRPAGES][r])
+        else if(typeof(r) == 'object')
+            res.send(JSON.stringify(r))
         else
             res.send(r)
     }
@@ -182,6 +184,7 @@ module.exports = (__l)=>{return class {
         if (!this[K_APP_CONFIG].port) this[K_APP_CONFIG].port = 80;
         const srv = express();
         srv.use(bodyParser.urlencoded({ extended: true }));
+        srv.use(bodyParser.json());
         srv.use(cookieParser());
         if (this[K_APP_CONFIG].static)
             srv.use(express.static(this[K_APP_CONFIG].root + this[K_APP_CONFIG].static));
@@ -201,7 +204,7 @@ module.exports = (__l)=>{return class {
                             req.clientAddress = ipstr
 
                         // 识别客户端类型 >> req.clientType
-                        if(req.headers['user-agent'].indexOf('MicroMessenger') >= 0)
+                        if(req.headers['user-agent'] && req.headers['user-agent'].indexOf('MicroMessenger') >= 0)
                             req.clientType = 'WeChat'
                         else
                             req.clientType = 'Unknown'
@@ -216,15 +219,22 @@ module.exports = (__l)=>{return class {
                         
                         // 接收 Post 数据
                         if (req.method == 'POST') {
-                            await (new Promise((r) => {
-                                req.rawBody = '';
-                                req.setEncoding('utf8');
-                                req.on('data', function (chk) { req.rawBody += chk });
-                                req.on('end', function () {
-                                    req.body = this.Utils.parseJson(req.rawBody);
-                                    r();
-                                });
-                            }));
+                            if(!req.complete){
+                                await (new Promise((r) => {
+                                    req.rawBody = '';
+                                    req.setEncoding('utf8');
+                                    req.on('data', function (chk) { 
+                                    req.rawBody += chk });
+                                    req.on('end', function () {
+                                        try{
+                                            req.body = JSON.parse(req.rawBody);
+                                        }catch(e){
+                                            req.body = req.rawBody;
+                                        }
+                                        r();
+                                    });
+                                }));
+                            }
                         }
 
                         // 处理请求

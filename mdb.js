@@ -66,6 +66,17 @@ module.exports = (__l)=>{return class {
         })
     }
 
+    async ttl(key) {
+        return new Promise(resolve => {
+            this[K_MDB_CONNECTION_POOL].ttl(this[K_MDB_KEY_PREFIX]+key, (err, val) => {
+                if (err)
+                    resolve(null)
+                else
+                    resolve(val)
+            })
+        })
+    }
+
     async del (key) {
         return new Promise(resolve => {
             this[K_MDB_CONNECTION_POOL].del(this[K_MDB_KEY_PREFIX]+key, (err) => {
