@@ -56,14 +56,23 @@ module.exports = (__l)=>{return new class {
         }
     }
 
+    sha1(v){
+        const hash = crypto.createHash('sha1')
+        return hash.update(v).digest("hex")
+    }
+
+    sha256(v){
+        const hash = crypto.createHash('sha256')
+        return hash.update(v).digest("hex")
+    }
+
     // 生成随机的十六进制字符串
     //      len = 【可选】字符串长度，默认为 32
     randomHex(len){
         if(!len) len = 32
-        const hash = crypto.createHash('sha256')
-        let str = hash.update(uuid.v4()).digest("hex")
-        while(str.length < len) str += hash.update(uuid.v4()).digest("hex")
-        return str.slice(len)
+        let str = this.sha256(uuid.v4())
+        while(str.length < len) str += this.sha256(uuid.v4())
+        return str.slice(0, len)
     }
 
     // 执行 shell 命令

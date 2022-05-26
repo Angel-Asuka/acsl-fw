@@ -101,15 +101,19 @@ module.exports = (__l)=>{return class {
 
         // 预加载所有模块
         for (let m of cfg.modules) {
-            const mod = require(cfg.root + m);
+            const mod = require(cfg.root + m)
+            const default_preprocessingChain = ('preprocessingChain' in mod) ? mod.preprocessingChain : null
+            const defulat_postprocessingChain = ('postprocessingChain' in mod) ? mod.postprocessingChain : null
+            if(!mod.preprocessors) mod.preprocessors = {}
+            if(!mod.postprocessors) mod.postprocessors = {}
             for (let p in mod) {
                 if (p[0] == '/') {
                     if (typeof (mod[p]) == 'function') {
                         this[K_APP_ROUTINE][p] = {
                             GET: true,
                             POST: true,
-                            preprocessingChain: null,
-                            postprocessingChain: null,
+                            preprocessingChain: default_preprocessingChain,
+                            postprocessingChain: defulat_postprocessingChain,
                             proc: mod[p].bind(mod),
                             mod: mod,
                             path: p
@@ -119,8 +123,8 @@ module.exports = (__l)=>{return class {
                         this[K_APP_ROUTINE][p] = {
                             GET: (mod[p].method && mod[p].method.indexOf('GET') >= 0),
                             POST: (mod[p].method && mod[p].method.indexOf('POST') >= 0),
-                            preprocessingChain: mod[p].preprocessingChain ? mod[p].preprocessingChain : null,
-                            postprocessingChain: mod[p].postprocessingChain ? mod[p].postprocessingChain : null,
+                            preprocessingChain: mod[p].preprocessingChain ? mod[p].preprocessingChain : default_preprocessingChain,
+                            postprocessingChain: mod[p].postprocessingChain ? mod[p].postprocessingChain : defulat_postprocessingChain,
                             proc: mod[p].proc.bind(mod),
                             mod: mod,
                             path: p
@@ -280,12 +284,16 @@ module.exports = (__l)=>{return class {
                     pre.push(q.bind(itm.mod))
                 else if (q in this[K_APP_PREPROCESSORS])
                     pre.push(this[K_APP_PREPROCESSORS][q].bind(itm.mod))
+                else if (q in itm.mod.preprocessors)
+                    pre.push(itm.mod.preprocessors[q].bind(itm.mod))
             }
             for (let q of post_lst){
                 if (typeof(q) == 'function')
                     post.push(q.bind(itm.mod))
                 else if (q in this[K_APP_POSTPROCESSORS])
                     post.push(this[K_APP_POSTPROCESSORS][q].bind(itm.mod))
+                else if (q in itm.mod.postprocessors)
+                    post.push(itm.mod.postprocessors[q].bind(itm.mod))
             }
             itm.preprocessingChain = pre
             itm.postprocessingChain = post
