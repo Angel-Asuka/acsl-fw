@@ -116,7 +116,8 @@ module.exports = (__l)=>{return class {
                             postprocessingChain: defulat_postprocessingChain,
                             proc: mod[p].bind(mod),
                             mod: mod,
-                            path: p
+                            path: p,
+                            cfg: mod[p]
                         }
                     } else if (typeof (mod[p] == 'object') && mod[p].proc) {
                         if(mod[p].method == null) mod[p].method = ['GET', 'POST']
@@ -127,7 +128,8 @@ module.exports = (__l)=>{return class {
                             postprocessingChain: mod[p].postprocessingChain ? mod[p].postprocessingChain : defulat_postprocessingChain,
                             proc: mod[p].proc.bind(mod),
                             mod: mod,
-                            path: p
+                            path: p,
+                            cfg: mod[p]
                         }
                     }
                 }
