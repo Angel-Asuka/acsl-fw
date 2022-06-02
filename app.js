@@ -225,7 +225,7 @@ module.exports = (__l)=>{return class {
                         
                         // 接收 Post 数据
                         if (req.method == 'POST') {
-                            if(!req.complete){
+                            if(req.headers['content-type'] != 'application/x-www-form-urlencoded' && req.headers['content-type'] != 'application/json'){
                                 await (new Promise((r) => {
                                     req.rawBody = '';
                                     req.setEncoding('utf8');

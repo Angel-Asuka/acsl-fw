@@ -66,6 +66,31 @@ module.exports = (__l)=>{return new class {
         return hash.update(v).digest("hex")
     }
 
+    get uuid(){
+        return uuid.v4()
+    }
+
+    get uuid1(){
+        return uuid.v1()
+    }
+
+    get uuid2(){
+        return uuid.v2()
+    }
+
+    get uuid3(){
+        return uuid.v3()
+    }
+
+    get uuid4(){
+        return uuid.v4()
+    }
+
+    get uuidHex(){
+        const u = uuid.v4()
+        return `${u.substr(0,8)}${u.substr(9,4)}${u.substr(14,4)}${u.substr(19,4)}${u.substr(24)}`
+    }
+
     // 生成随机的十六进制字符串
     //      len = 【可选】字符串长度，默认为 32
     randomHex(len){

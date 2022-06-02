@@ -57,7 +57,12 @@ const Http = {
     //#endregion
     //#region POST请求
     post: async (url, data, header, ondownloading, onuploading, stad, stau)=>{
-        if(typeof(data)=='object') data = JSON.stringify(data)
+        if(!header) header = {}
+        if(typeof(data)=='object'){
+            data = JSON.stringify(data)
+            if(!header['content-type'])
+                header['content-type'] = 'application/json'
+        }
         return await(Http.req(url, 'POST', data, header, ondownloading, onuploading, stad, stau));
     }
     //#endregion
