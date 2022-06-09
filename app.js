@@ -102,14 +102,16 @@ module.exports = (__l)=>{return class {
         // 预加载所有模块
         for (let m of cfg.modules) {
             const mod = require(cfg.root + m)
+            const prefix = mod.prefix || ''
             const default_preprocessingChain = ('preprocessingChain' in mod) ? mod.preprocessingChain : null
             const defulat_postprocessingChain = ('postprocessingChain' in mod) ? mod.postprocessingChain : null
             if(!mod.preprocessors) mod.preprocessors = {}
             if(!mod.postprocessors) mod.postprocessors = {}
             for (let p in mod) {
                 if (p[0] == '/') {
+                    const path = prefix + p
                     if (typeof (mod[p]) == 'function') {
-                        this[K_APP_ROUTINE][p] = {
+                        this[K_APP_ROUTINE][path] = {
                             GET: true,
                             POST: true,
                             preprocessingChain: default_preprocessingChain,
@@ -121,7 +123,7 @@ module.exports = (__l)=>{return class {
                         }
                     } else if (typeof (mod[p] == 'object') && mod[p].proc) {
                         if(mod[p].method == null) mod[p].method = ['GET', 'POST']
-                        this[K_APP_ROUTINE][p] = {
+                        this[K_APP_ROUTINE][path] = {
                             GET: (mod[p].method && mod[p].method.indexOf('GET') >= 0),
                             POST: (mod[p].method && mod[p].method.indexOf('POST') >= 0),
                             preprocessingChain: mod[p].preprocessingChain ? mod[p].preprocessingChain : default_preprocessingChain,
