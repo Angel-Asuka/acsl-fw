@@ -76,9 +76,11 @@ window.Langley = {
 }
 
 window.$ = (p, o)=>{
-    if(typeof(p) == 'function')
-        window.Langley[K_LANGLEY_ENTRY] = p;
-    else if(typeof(p) == 'string'){
+    if(typeof(p) == 'function'){
+        if(!window.Langley[K_LANGLEY_ENTRY])    
+            window.Langley[K_LANGLEY_ENTRY] = []
+        window.Langley[K_LANGLEY_ENTRY].push(p)
+    }else if(typeof(p) == 'string'){
         if(p[0] == '!'){
             const ele = document.createElement(p.substring(1));
             if(o){
@@ -90,6 +92,8 @@ window.$ = (p, o)=>{
                 }
             }
             return ele;
+        }else if(p[0] == '@'){
+            return document.getElementsByTagName(p.substring(1))
         }else{
             return document.getElementById(p);
         }
@@ -100,7 +104,44 @@ window.$.__proto__ = window.Langley;
 
 //#region Entry
 window.onload=(e)=>{
-    if(window.Langley[K_LANGLEY_ENTRY]) window.Langley[K_LANGLEY_ENTRY]();
+    if(window.Langley[K_LANGLEY_ENTRY]){
+        for(let p of window.Langley[K_LANGLEY_ENTRY])
+            p()
+    }
+}
+//#endregion
+
+//#region Node.break
+Node.prototype.break = function(){
+    if (this.parentElement) this.parentElement.removeChild(this);
+}
+//#endregion
+
+//#region Element.show/hide
+HTMLElement.prototype.show = function(){
+    if(this.__parent)
+        this.__parent.appendChild(this)
+    else
+        document.body.appendChild(this)
+}
+
+HTMLElement.prototype.hide = function(){
+    this.__parent = this.parentElement
+    this.break()
+}
+//#endregion
+
+//#region Element.scanId
+HTMLElement.prototype.scan = function(key, p){
+    if(!key) key = 'id'
+    if(!p) p = this
+    let i = this.firstElementChild
+    while (i != null) {
+        const xid = i.getAttribute(key)
+        if(xid) p[xid] = i
+        i.scan(key, p)
+        i = i.nextElementSibling
+    }
 }
 //#endregion
 
