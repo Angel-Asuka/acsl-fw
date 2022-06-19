@@ -103,10 +103,10 @@ window.$ = (p, o)=>{
 window.$.__proto__ = window.Langley;
 
 //#region Entry
-window.onload=(e)=>{
+window.onload = async (e)=>{
     if(window.Langley[K_LANGLEY_ENTRY]){
         for(let p of window.Langley[K_LANGLEY_ENTRY])
-            p()
+            await p()
     }
 }
 //#endregion
