@@ -34,6 +34,12 @@ class DBBase {
         return null
     }
 
+    async exec(sql, param){
+        const ret = await this.query(sql, param)
+        if(!ret.ok) console.log(ret)
+        return ret.ok
+    }
+
     async insert(table, values){
         const keys = [];
         const vals = [];
