@@ -69,45 +69,25 @@ const Http = {
 }
 //#endregion
 
-const K_LANGLEY_ENTRY = Symbol()
 
-window.Langley = {
-    Http: Http
-}
-
-window.$ = (p, o)=>{
-    if(typeof(p) == 'function'){
-        if(!window.Langley[K_LANGLEY_ENTRY])    
-            window.Langley[K_LANGLEY_ENTRY] = []
-        window.Langley[K_LANGLEY_ENTRY].push(p)
-    }else if(typeof(p) == 'string'){
-        if(p[0] == '!'){
-            const ele = document.createElement(p.substring(1));
-            if(o){
-                for(let k in o){
-                    if(k == 'style')
-                        for(s in o[k]) ele.style[s] = o[k][s];
-                    else
-                        ele[k] = o[k];
-                }
-            }
-            return ele;
-        }else if(p[0] == '@'){
-            return document.getElementsByTagName(p.substring(1))
-        }else{
-            return document.getElementById(p);
-        }
+//#region Global Utils
+window.isArray = (o)=>{return (typeof(o)=='object' && o.__proto__.constructor == Array)}
+window.isInstanceOf = (i, c)=>{
+    if(typeof(i) != 'object') return false
+    i = i.__proto__
+    while(i){
+        if(i.constructor == c) return true
+        i = i.__proto__
     }
+    return false
 }
+//#endregion
 
-window.$.__proto__ = window.Langley;
-
-//#region Entry
-window.onload = async (e)=>{
-    if(window.Langley[K_LANGLEY_ENTRY]){
-        for(let p of window.Langley[K_LANGLEY_ENTRY])
-            await p()
-    }
+//#region Array.insert
+Array.prototype.insert = function(v, i){
+    if(i == null || i < 0 || i > this.length)
+        i = this.length
+    return this.slice(0, i).concat([v]).concat(this.slice(i))
 }
 //#endregion
 
@@ -141,6 +121,115 @@ HTMLElement.prototype.scan = function(key, p){
         if(xid) p[xid] = i
         i.scan(key, p)
         i = i.nextElementSibling
+    }
+}
+//#endregion
+
+//#region Node.removeAllChildren
+Node.prototype.removeAllChildren = function(){
+    const arr = []
+    while(this.firstChild){
+        arr.push(this.firstChild)
+        this.removeChild(this.firstChild)
+    }
+    return arr
+}
+//#endregion
+
+//#region Element.removeAllElementChildren
+HTMLElement.prototype.removeAllElementChildren = function(){
+    const arr = []
+    while(this.firstElementChild){
+        arr.push(this.firstElementChild)
+        this.removeChild(this.firstElementChild)
+    }
+    return arr
+}
+//#endregion
+
+const K_LANGLEY_ENTRY = Symbol()
+const K_LANGLEY_INIT_LIST = Symbol()
+
+window.Langley = {
+    Http: Http,
+
+    build: function(def, root){
+        if(!def.tag) def.tag = 'div'
+        const ele = document.createElement(def.tag)
+        if(!root) root = ele
+        for(let k in def){
+            if(k == 'style')
+                for(let s in def[k]) ele.style[s] = def[k][s]
+            else if(k == 'children')
+                for(let c in def[k]) ele.appendChild(window.Langley.build(def[k][c], root))
+            else if(k == 'xid')
+                root[def[k]] = ele
+            else
+                ele[k] = def[k]
+        }
+        return ele
+    }
+}
+
+/*
+特别函数 $
+用法：
+    $('x') = 查找 id=x 的元素 document.getElementById('x')
+    $('@x') = 查找标签为 x 的所有元素 document.getElementsByTagName('x')
+    $('!x', opt) = 构造一个标签为 x 的元素，可以使用可选的 opt 来设置新标签的参数，详见 Langley.build 的说明
+                   额外地，此处的 opt 中可以指定两个额外的参数：
+                        root    = 等同于 Langley.build 中的 root 参数
+                        parent  = 如果设置，将会自动把新构造的元素添加为 parent 的子元素
+    $(e) = 将 e 加入元素初始化队列。e 必须为 HTMLElement 的一个实例。
+    $(o, root) = o 为一个对象，等同于调用 Langley.build(o, root)
+*/
+window.$ = (p, o)=>{
+    if(typeof(p) == 'function'){
+        if(!window.Langley[K_LANGLEY_ENTRY])    
+            window.Langley[K_LANGLEY_ENTRY] = []
+        window.Langley[K_LANGLEY_ENTRY].push(p)
+    }else if(typeof(p) == 'string'){
+        if(p[0] == '!'){
+            if(o){
+                o.tag = p.substring(1)
+                const root = o.root
+                const parent  = o.parent
+                delete o.root
+                delete o.parent
+                const ele = window.Langley.build(o, root)
+                if(parent) parent.appendChild(ele)
+                return ele
+            }else
+                return document.createElement(p.substring(1));
+        }else if(p[0] == '@'){
+            return document.getElementsByTagName(p.substring(1))
+        }else{
+            return document.getElementById(p);
+        }
+    }else if(typeof(p) == 'object'){
+        if(isInstanceOf(p, HTMLElement) && p.init){
+            if(!window.Langley[K_LANGLEY_INIT_LIST])
+                window.Langley[K_LANGLEY_INIT_LIST] = []
+            window.Langley[K_LANGLEY_INIT_LIST].push(p)
+        }else{
+            return window.Langley.build(p, o)
+        }
+    }
+}
+
+window.$.__proto__ = window.Langley;
+
+//#region Entry
+window.onload = async (e)=>{
+    if(window.Langley[K_LANGLEY_INIT_LIST]){
+        for(let p of window.Langley[K_LANGLEY_INIT_LIST]){
+            if(p.init) await p.init()
+        }
+    }
+
+    if(window.Langley[K_LANGLEY_ENTRY]){
+        for(let p of window.Langley[K_LANGLEY_ENTRY])
+            await p()
     }
 }
 //#endregion
