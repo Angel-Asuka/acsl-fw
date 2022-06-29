@@ -128,9 +128,9 @@ module.exports = (__l)=>{return class {
         return null
     }
 
-    async hdel (key, fields, val) {
+    async hdel (key, fields) {
         return new Promise(resolve => {
-            this[K_MDB_CONNECTION_POOL].hdel(this[K_MDB_KEY_PREFIX]+key, fields, val, (err) => {
+            this[K_MDB_CONNECTION_POOL].hdel(this[K_MDB_KEY_PREFIX]+key, fields, (err) => {
                 resolve(err)
             })
         })
