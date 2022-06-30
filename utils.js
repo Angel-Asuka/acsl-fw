@@ -91,6 +91,13 @@ module.exports = (__l)=>{return new class {
         return `${u.substr(0,8)}${u.substr(9,4)}${u.substr(14,4)}${u.substr(19,4)}${u.substr(24)}`
     }
 
+    desens(str, begin, end){
+        if(typeof(begin)!='number') begin = 2
+        if(typeof(end)!='number') end = 3
+        const l = str.length
+        return `${str.substr(0,begin)}********${str.substr(l-end)}`
+    }
+
     // 生成随机的十六进制字符串
     //      len = 【可选】字符串长度，默认为 32
     randomHex(len){
