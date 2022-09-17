@@ -4,12 +4,10 @@
     HTTP 模块
 */
 
-const axios = require('axios')
+import * as axios from 'axios'
 
-module.exports = (__l)=>{return new class {
-    constructor(cfg) {
-        this.Langley = __l
-    }
+class Http{
+    constructor() {}
 
     async get(url, param, headers, exdata) {
         return new Promise((resolve)=>{
@@ -33,4 +31,8 @@ module.exports = (__l)=>{return new class {
         });
     }
 
-}}
+}
+
+const http = new Http()
+
+export {http, Http}

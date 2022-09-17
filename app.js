@@ -1,5 +1,3 @@
-'use strict'
-
 /**
  * langley service framework
  * class App
@@ -36,10 +34,11 @@
  * 
  */
 
-const fs = require('fs')
-const express = require('express')
-const bodyParser = require('body-parser')
-const cookieParser = require('cookie-parser')
+import * as fs from 'fs'
+import express from 'express';
+import bodyParser from 'body-parser'
+import cookieParser from 'cookie-parser'
+import {Template} from './template.js'
 
 const K_APP_CONFIG = Symbol()
 const K_APP_ROUTINE = Symbol()
@@ -51,28 +50,120 @@ const K_APP_POSTPROCESSORS = Symbol()
 const K_APP_DEF_PREPROCESSINGCHAIN = Symbol()
 const K_APP_DEF_POSTPROCESSINGCHAIN = Symbol()
 const K_APP_USER_INIT = Symbol()
+const K_APP_LOAD = Symbol()
+const K_APP_INIT_LIST = Symbol()
 
 const K_APP_RESPONSE = Symbol()
 
 const REG_IP = /\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/
 
-module.exports = (__l)=>{return class {
+/** 应用类 */
+export class App{
+    //#region constructor
+    /**
+     * 创建一个应用对象
+     * @param {Object} cfg 配置对象，参考 Example
+     * @example
+     * import url from "node:url"
+     * import path from "node:path"
+     * const root_path = path.dirname(url.fileURLToPath(import.meta.url))
+     * 
+     * const cfg = {            // 以下内容均为可选项
+     *      root : root_path,       // 工程目录，后续所有路径配置都应该相对于根目录来配置
+     *      addr : "0.0.0.0",       // 监听地址
+     *      port : 80,              // 监听端口，默认80
+     *      app : "app",            // 模块文件目录，langley 会自动扫描并尝试加载该目录下的所有 js 文件中的对象，成功加载的对象将可以通过 app.*** 来访问
+     *      modules : {},           // 额外的模块表，之后可以通过 app.*** 来访问其中的对象
+     *      static :  "static",     // 静态路径， langley 将为该目录下的文件提供静态 http 服务
+     *      template : "template",  // 模板路径， langley 将自动加载该目录下的文件为 html 模板，之后可以使用 app.render 来进行渲染
+     *      errpages : "errpage",   // 定制的 HTTP 错误页面路径
+     *      data : {},              // 用户数据, 之后可由 app.data 访问
+     *      init : async (app)=>{}  // 初始化函数，App.run 的时候会在初始化完成、开始接受请求前调用这个函数。
+     *      hooks : {               // 页面钩子，定义页面的预处理和后处理程序
+     *          preprocessors : {           // 请求预处理器
+     *              xxx : async function(req, rsp, app)
+     *          },
+     *          postprocessors : {          // 请求后处理器
+     *              yyy : : async function(req, rsp, app, ret)
+     *          },
+     *          preprocessingChain : ['xxx'],   //默认的预处理链
+     *          postprocessingChain : ['yyy']   //默认的后处理链
+     *      }
+     * }
+     */
     constructor(cfg) {
-        this.Langley = __l;
-
         if (!cfg) cfg = {}
-        this[K_APP_CONFIG] = cfg;
-        this[K_APP_CONFIG_DATA] = cfg.data;
-        this[K_APP_ROUTINE] = {};
-        this[K_APP_MODULES] = {};
-        this[K_APP_ERRPAGES] = {};
-        if (!cfg.modules) cfg.modules = [];
+        this[K_APP_CONFIG] = cfg
+        this[K_APP_CONFIG_DATA] = cfg.data
+        this[K_APP_ROUTINE] = {}
+        this[K_APP_MODULES] = {}
+        this[K_APP_ERRPAGES] = {}
+        this[K_APP_INIT_LIST] = []
+        if (!cfg.root) cfg.root = './'
+        else if (cfg.root[cfg.root.length - 1] != '/') cfg.root += '/'
+    }
+    //#endregion
 
-        if (!cfg.root)
-            cfg.root = '../';
-        else if (cfg.root[cfg.root.length - 1] != '/')
-            cfg.root += '/';
+    //#region load(x)
+    /**
+     * 加载一个模块，
+     * 当输入为字符串时，将会尝试加载这个字符串所指路径所对应的js文件中的所有导出对象；
+     * 当输入为一个对象时，将会尝试加载这个对象。
+     * @param {String|Object} x 模块文件路径或模块对象
+     * @param {String} name 【可选】模块名称
+     */
+    async load(x, name){
+        if(typeof(x) == 'object'){
+            const prefix = x.prefix || ''
+            const default_preprocessingChain = ('preprocessingChain' in x) ? x.preprocessingChain : null
+            const defulat_postprocessingChain = ('postprocessingChain' in x) ? x.postprocessingChain : null
+            if(!x.preprocessors) x.preprocessors = {}
+            if(!x.postprocessors) x.postprocessors = {}
+            for(let p in x){
+                if (p[0] == '/'){
+                    const path = prefix + p
+                    if(typeof(x[p]) == 'function'){
+                        this[K_APP_ROUTINE][path] = {
+                            GET: true,
+                            POST: true,
+                            preprocessingChain: default_preprocessingChain,
+                            postprocessingChain: defulat_postprocessingChain,
+                            proc: x[p].bind(x),
+                            mod: x,
+                            path: p,
+                            cfg: x[p]
+                        }
+                    }else if(typeof(x[p]) == 'object'){
+                        this[K_APP_ROUTINE][path] = {
+                            GET: (x[p].method && x[p].method.indexOf('GET') >= 0),
+                            POST: (x[p].method && x[p].method.indexOf('POST') >= 0),
+                            preprocessingChain: x[p].preprocessingChain ? x[p].preprocessingChain : default_preprocessingChain,
+                            postprocessingChain: x[p].postprocessingChain ? x[p].postprocessingChain : defulat_postprocessingChain,
+                            proc: x[p].proc.bind(x),
+                            mod: x,
+                            path: p,
+                            cfg: x[p]
+                        }
+                    }
+                }
+            }
+            if ('name' in x)
+                this[K_APP_MODULES][x.name] = x;
+            else if(name)
+                this[K_APP_MODULES][name] = x;
+            if ('init' in x)
+                this[K_APP_INIT_LIST].push(x.init.bind(x))
+        }else if(typeof(x) == "string"){
+            const mod = await import(x)
+            for(let x in mod){
+                await this.load(mod[x], x)
+            }
+        }
+    }
+    //#endregion
 
+    async [K_APP_LOAD](){
+        const cfg = this[K_APP_CONFIG]
         // 尝试扫描 errpages 目录
         if (cfg.errpages) {
             const dl = fs.readdirSync(cfg.root + cfg.errpages);
@@ -84,68 +175,24 @@ module.exports = (__l)=>{return class {
             });
         }
 
-        // 尝试扫描 root 所指目录
+        // 尝试扫描 app 所指目录
         if (cfg.app) {
-            const dl = fs.readdirSync(cfg.root + cfg.app);
+            const dl = fs.readdirSync(cfg.root + cfg.app)
+            const ml = []
             dl.forEach((itm) => {
                 if (itm.substr(itm.length - 3).toLowerCase() == '.js')
-                    cfg.modules.push(cfg.app + '/' + itm.substr(0, itm.length - 3));
+                    ml.push(`${cfg.root}${cfg.app}/${itm}`)
             });
+            for(let m of ml) await this.load(m)
         }
 
-        if (cfg.template)
-            this.Template = new this.Langley.Template({root:cfg.root + cfg.template})
-
-        this.Http = this.Langley.Http
-        this.Utils = this.Langley.Utils
-
-        // 预加载所有模块
-        for (let m of cfg.modules) {
-            const mod = require(cfg.root + m)
-            const prefix = mod.prefix || ''
-            const default_preprocessingChain = ('preprocessingChain' in mod) ? mod.preprocessingChain : null
-            const defulat_postprocessingChain = ('postprocessingChain' in mod) ? mod.postprocessingChain : null
-            if(!mod.preprocessors) mod.preprocessors = {}
-            if(!mod.postprocessors) mod.postprocessors = {}
-            for (let p in mod) {
-                if (p[0] == '/') {
-                    const path = prefix + p
-                    if (typeof (mod[p]) == 'function') {
-                        this[K_APP_ROUTINE][path] = {
-                            GET: true,
-                            POST: true,
-                            preprocessingChain: default_preprocessingChain,
-                            postprocessingChain: defulat_postprocessingChain,
-                            proc: mod[p].bind(mod),
-                            mod: mod,
-                            path: p,
-                            cfg: mod[p]
-                        }
-                    } else if (typeof (mod[p] == 'object') && mod[p].proc) {
-                        if(mod[p].method == null) mod[p].method = ['GET', 'POST']
-                        this[K_APP_ROUTINE][path] = {
-                            GET: (mod[p].method && mod[p].method.indexOf('GET') >= 0),
-                            POST: (mod[p].method && mod[p].method.indexOf('POST') >= 0),
-                            preprocessingChain: mod[p].preprocessingChain ? mod[p].preprocessingChain : default_preprocessingChain,
-                            postprocessingChain: mod[p].postprocessingChain ? mod[p].postprocessingChain : defulat_postprocessingChain,
-                            proc: mod[p].proc.bind(mod),
-                            mod: mod,
-                            path: p,
-                            cfg: mod[p]
-                        }
-                    }
-                }
-            }
-            if ('name' in mod)
-                this[K_APP_MODULES][mod.name] = mod;
-            else
-                this[K_APP_MODULES][m] = mod;
-        }
+        this.Template = new Template()
+        if (cfg.template) this.Template.set({root:cfg.root + cfg.template})
 
         // 将配置的模块加入模块列表
-        if (cfg.mod){
-            for (let m in cfg.mod)
-                this[K_APP_MODULES][m] = cfg.mod[m]
+        if (cfg.modules){
+            for (let m in cfg.modules)
+                this[K_APP_MODULES][m] = cfg.modules[m]
         }
 
         this[K_APP_PREPROCESSORS] = {}
@@ -171,6 +218,8 @@ module.exports = (__l)=>{return class {
     get data() { return this[K_APP_CONFIG_DATA]; }
     get timestamp() { return Math.floor(Date.now()/1000); }
 
+    render(fn, data){ return this.Template.render(fn,data) }
+
     registerPreprocessor(name, proc) {
         this[K_APP_PREPROCESSORS][name] = proc
     }
@@ -188,8 +237,13 @@ module.exports = (__l)=>{return class {
             res.send(r)
     }
 
+    /**
+     * 启动 App
+     */
     async run() {
-        if (!this[K_APP_CONFIG].port) this[K_APP_CONFIG].port = 80;
+        await this[K_APP_LOAD]()
+
+        if (!this[K_APP_CONFIG].port) this[K_APP_CONFIG].port = 80
         const srv = express();
         srv.use(bodyParser.urlencoded({ extended: true }));
         srv.use(bodyParser.json());
@@ -197,6 +251,7 @@ module.exports = (__l)=>{return class {
         if (this[K_APP_CONFIG].static)
             srv.use(express.static(this[K_APP_CONFIG].root + this[K_APP_CONFIG].static));
         srv.all('*', async (req, res) => {
+            console.log(req.path)
             if (req.path in this[K_APP_ROUTINE]) {
                 const func = this[K_APP_ROUTINE][req.path];
                 if (func[req.method]) {
@@ -267,10 +322,7 @@ module.exports = (__l)=>{return class {
         });
 
         // 初始化模块
-        for (let m in this[K_APP_MODULES]) {
-            if (this[K_APP_MODULES][m].init)
-                await this[K_APP_MODULES][m].init(this)
-        }
+        for (let p of this[K_APP_INIT_LIST]) p(this)
 
         // 全局初始化
         if (this[K_APP_USER_INIT])
@@ -286,23 +338,22 @@ module.exports = (__l)=>{return class {
             for (let q of pre_lst){
                 if (typeof(q) == 'function')
                     pre.push(q.bind(itm.mod))
-                else if (q in this[K_APP_PREPROCESSORS])
-                    pre.push(this[K_APP_PREPROCESSORS][q].bind(itm.mod))
                 else if (q in itm.mod.preprocessors)
                     pre.push(itm.mod.preprocessors[q].bind(itm.mod))
+                else if (q in this[K_APP_PREPROCESSORS])
+                    pre.push(this[K_APP_PREPROCESSORS][q].bind(itm.mod))
             }
             for (let q of post_lst){
                 if (typeof(q) == 'function')
                     post.push(q.bind(itm.mod))
-                else if (q in this[K_APP_POSTPROCESSORS])
-                    post.push(this[K_APP_POSTPROCESSORS][q].bind(itm.mod))
                 else if (q in itm.mod.postprocessors)
                     post.push(itm.mod.postprocessors[q].bind(itm.mod))
+                else if (q in this[K_APP_POSTPROCESSORS])
+                    post.push(this[K_APP_POSTPROCESSORS][q].bind(itm.mod))
             }
             itm.preprocessingChain = pre
             itm.postprocessingChain = post
         }
         srv.listen(this[K_APP_CONFIG].port, this[K_APP_CONFIG].addr);
-        return true;
     }
-}}
+}

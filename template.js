@@ -11,8 +11,8 @@
  * 
  */
 
-const fs = require('fs')
-const K_TEMPLATE_CFG = Symbol()
+import * as fs from 'fs'
+const K_TEMPLATE_ROOT = Symbol()
 const K_TEMPLATE_CACHE = Symbol()
 const K_TEMPLATE_BEGIN_MARK = Symbol()
 const K_TEMPLATE_END_MARK = Symbol()
@@ -71,29 +71,29 @@ function compile(name, lupd, str, bm, em){
     }
 }
 
-module.exports = (__l)=>{return class {
+class Template{
     constructor(cfg) {
-        this.Langley = __l
-        this[K_TEMPLATE_CFG] = cfg
         this[K_TEMPLATE_CACHE] = {}
+        this[K_TEMPLATE_BEGIN_MARK] = '<!--{'
+        this[K_TEMPLATE_END_MARK] = '}-->'
+        if(cfg) this.set(cfg)
+    }
+
+    set(cfg){
         // CFG - 模板目录
-        if(this[K_TEMPLATE_CFG].root[this[K_TEMPLATE_CFG].root.length-1] != '/')
-            this[K_TEMPLATE_CFG].root += '/'
+        if(cfg.root){
+            this[K_TEMPLATE_ROOT] = cfg.root
+            if(this[K_TEMPLATE_ROOT][this[K_TEMPLATE_ROOT].length-1] != '/') this[K_TEMPLATE_ROOT] += '/'
+        }
         // CFG - 起始标记
-        if(this[K_TEMPLATE_CFG].begin_mark)
-            this[K_TEMPLATE_BEGIN_MARK] = this[K_TEMPLATE_CFG].begin_mark
-        else
-            this[K_TEMPLATE_BEGIN_MARK] = '<!--{'
+        if(cfg.begin_mark) this[K_TEMPLATE_BEGIN_MARK] = cfg.begin_mark
         // CFG - 结束标记
-        if(this[K_TEMPLATE_CFG].end_mark)
-            this[K_TEMPLATE_END_MARK] = this[K_TEMPLATE_CFG].end_mark
-        else
-            this[K_TEMPLATE_END_MARK] = '}-->'
+        if(cfg.end_mark) this[K_TEMPLATE_END_MARK] = cfg.end_mark
     }
 
     makeCache(fn) {
         try{
-            const fpath = this[K_TEMPLATE_CFG].root + fn;
+            const fpath = this[K_TEMPLATE_ROOT] + fn;
             const fstat = fs.statSync(fpath)
             const fcontent = fs.readFileSync(fpath, 'utf-8')
             if(!(fn in this[K_TEMPLATE_CACHE]) || this[K_TEMPLATE_CACHE][fn].lastUpdate < fstat.mtimeMs){
@@ -114,4 +114,6 @@ module.exports = (__l)=>{return class {
         return ""
     }
     
-}}
+}
+
+export {Template}

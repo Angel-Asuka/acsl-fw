@@ -1,5 +1,3 @@
-'use strict'
-
 /*
     数据库模块
     cfg = {
@@ -11,7 +9,7 @@
     }
 */
 
-const MySQL_Driver = require('mysql');
+import * as MySQL_Driver from 'mysql'
 
 const K_TRANSACTION_CONN = Symbol()
 
@@ -127,7 +125,7 @@ class Transaction extends DBBase {
     }
 }
 
-module.exports = (__l)=>{return class extends DBBase {
+class DB extends DBBase {
     constructor(cfg) {
         super()
         this.Langley = __l
@@ -184,4 +182,6 @@ module.exports = (__l)=>{return class extends DBBase {
             return false
         }
     }
-}}
+}
+
+export {DB}

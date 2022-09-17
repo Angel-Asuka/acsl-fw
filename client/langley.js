@@ -180,7 +180,7 @@ window.Langley = {
                    额外地，此处的 opt 中可以指定两个额外的参数：
                         root    = 等同于 Langley.build 中的 root 参数
                         parent  = 如果设置，将会自动把新构造的元素添加为 parent 的子元素
-    $(e) = 将 e 加入元素初始化队列。e 必须为 HTMLElement 的一个实例。
+    $(e) = 将 e 加入元素初始化队列。e 必须为 HTMLElement 的一个实例，初始化时会调用e.init()。
     $(o, root) = o 为一个对象，等同于调用 Langley.build(o, root)
 */
 window.$ = (p, o)=>{

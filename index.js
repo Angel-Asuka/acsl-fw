@@ -1,13 +1,8 @@
-'use strict'
+/** @module langley */
 
-const Langley = {}
-function loadModule(mn){Langley[mn] = require(`./${mn.toLowerCase()}`)(Langley)}
-
-loadModule('App')
-loadModule('DB')
-loadModule('Template')
-loadModule('MDB')
-loadModule('Http')
-loadModule('Utils')
-
-module.exports = Langley
+export {App} from './app.js'
+export {http, Http} from './http.js'
+export {DB} from './db.js'
+export {MDB} from './mdb.js'
+export {Template} from './template.js'
+export {utils, Utils} from './utils.js'

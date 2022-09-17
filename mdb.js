@@ -12,12 +12,12 @@
     }
 */
 
-const Redis_ConnectionPool = require('redis-connection-pool')
+import * as Redis_ConnectionPool from 'redis-connection-pool'
 
 const K_MDB_CONNECTION_POOL = Symbol()
 const K_MDB_KEY_PREFIX = Symbol()
 
-module.exports = (__l)=>{return class {
+class MDB{
     constructor(cfg) {
         this.Langley = __l
         if (!cfg) cfg = {}
@@ -173,4 +173,6 @@ module.exports = (__l)=>{return class {
             })
         })
     }
-}}
+}
+
+export {MDB}
