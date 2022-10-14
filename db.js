@@ -1,13 +1,6 @@
-/*
-    数据库模块
-    cfg = {
-        host: ,
-        user: ,
-        password: ,
-        port: ,
-        database: 
-    }
-*/
+/**
+ * MySQL 数据库模块
+ */
 
 import * as MySQL_Driver from 'mysql'
 
@@ -125,10 +118,24 @@ class Transaction extends DBBase {
     }
 }
 
+/**
+ * class DB
+ */
 class DB extends DBBase {
+    /**
+     * 构造一个 DB 对象
+     * @param {Object} cfg 
+     * @example
+     * const cfg = {
+     *     host: "127.0.0.1",       // MySQL 服务地址
+     *     user: "root",            // 账号
+     *     password: "123",         // 密码
+     *     port: 3306,              // 端口
+     *     database: "db"           // 数据库名
+     * }
+     */
     constructor(cfg) {
         super()
-        this.Langley = __l
         if (!cfg.connectionLimit)
             cfg.connectionLimit = 10
         this.pool = MySQL_Driver.createPool(cfg)

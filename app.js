@@ -39,6 +39,7 @@ import express from 'express';
 import bodyParser from 'body-parser'
 import cookieParser from 'cookie-parser'
 import {Template} from './template.js'
+import {utils} from './utils.js'
 
 const K_APP_CONFIG = Symbol()
 const K_APP_ROUTINE = Symbol()
@@ -73,7 +74,7 @@ export class App{
      *      addr : "0.0.0.0",       // 监听地址
      *      port : 80,              // 监听端口，默认80
      *      app : "app",            // 模块文件目录，langley 会自动扫描并尝试加载该目录下的所有 js 文件中的对象，成功加载的对象将可以通过 app.*** 来访问
-     *      modules : {},           // 额外的模块表，之后可以通过 app.*** 来访问其中的对象
+     *      modules : {},           // 额外的模块表，之后可以通过 app.modules.*** 来访问其中的对象
      *      static :  "static",     // 静态路径， langley 将为该目录下的文件提供静态 http 服务
      *      template : "template",  // 模板路径， langley 将自动加载该目录下的文件为 html 模板，之后可以使用 app.render 来进行渲染
      *      errpages : "errpage",   // 定制的 HTTP 错误页面路径
@@ -188,11 +189,14 @@ export class App{
 
         this.Template = new Template()
         if (cfg.template) this.Template.set({root:cfg.root + cfg.template})
+        this.Utils = utils
 
         // 将配置的模块加入模块列表
         if (cfg.modules){
-            for (let m in cfg.modules)
+            for (let m in cfg.modules){
                 this[K_APP_MODULES][m] = cfg.modules[m]
+                if ('init' in cfg.modules[m]) this[K_APP_INIT_LIST].push(cfg.modules[m].init.bind(cfg.modules[m]))
+            }
         }
 
         this[K_APP_PREPROCESSORS] = {}
@@ -216,7 +220,7 @@ export class App{
     get modules() { return this[K_APP_MODULES]; }
     get config() { return this[K_APP_CONFIG]; }
     get data() { return this[K_APP_CONFIG_DATA]; }
-    get timestamp() { return Math.floor(Date.now()/1000); }
+    get timestamp() { return parseInt(Date.now()/1000); }
 
     render(fn, data){ return this.Template.render(fn,data) }
 
@@ -229,9 +233,12 @@ export class App{
     }
 
     [K_APP_RESPONSE](r, res){
-        if(typeof(r) == 'number' && r in this[K_APP_ERRPAGES])
-            res.status(r).send(this[K_APP_ERRPAGES][r])
-        else if(typeof(r) == 'object')
+        if(typeof(r) == 'number'){
+            if(r in this[K_APP_ERRPAGES])
+                res.status(r).send(this[K_APP_ERRPAGES][r])
+            else
+                res.sendStatus(r)
+        }else if(typeof(r) == 'object')
             res.send(JSON.stringify(r))
         else
             res.send(r)
@@ -251,7 +258,6 @@ export class App{
         if (this[K_APP_CONFIG].static)
             srv.use(express.static(this[K_APP_CONFIG].root + this[K_APP_CONFIG].static));
         srv.all('*', async (req, res) => {
-            console.log(req.path)
             if (req.path in this[K_APP_ROUTINE]) {
                 const func = this[K_APP_ROUTINE][req.path];
                 if (func[req.method]) {
@@ -322,7 +328,7 @@ export class App{
         });
 
         // 初始化模块
-        for (let p of this[K_APP_INIT_LIST]) p(this)
+        for (let p of this[K_APP_INIT_LIST]) await p(this)
 
         // 全局初始化
         if (this[K_APP_USER_INIT])
