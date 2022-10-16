@@ -40,6 +40,7 @@ import bodyParser from 'body-parser'
 import cookieParser from 'cookie-parser'
 import {Template} from './template.js'
 import {utils} from './utils.js'
+import {http} from './http.js'
 
 const K_APP_CONFIG = Symbol()
 const K_APP_ROUTINE = Symbol()
@@ -100,6 +101,8 @@ export class App{
         this[K_APP_MODULES] = {}
         this[K_APP_ERRPAGES] = {}
         this[K_APP_INIT_LIST] = []
+        this.Utils = utils
+        this.Http = http
         if (!cfg.root) cfg.root = './'
         else if (cfg.root[cfg.root.length - 1] != '/') cfg.root += '/'
     }
@@ -189,7 +192,7 @@ export class App{
 
         this.Template = new Template()
         if (cfg.template) this.Template.set({root:cfg.root + cfg.template})
-        this.Utils = utils
+        
 
         // 将配置的模块加入模块列表
         if (cfg.modules){

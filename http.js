@@ -4,7 +4,7 @@
     HTTP 模块
 */
 
-import * as axios from 'axios'
+import axios from 'axios'
 
 class Http{
     constructor() {}
