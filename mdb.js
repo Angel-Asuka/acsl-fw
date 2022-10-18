@@ -19,7 +19,6 @@ const K_MDB_KEY_PREFIX = Symbol()
 
 class MDB{
     constructor(cfg) {
-        this.Langley = __l
         if (!cfg) cfg = {}
         if (!cfg.host) cfg.host = "127.0.0.1"
         if (!cfg.port) cfg.port = 6379
@@ -36,7 +35,7 @@ class MDB{
             }
         }
         this[K_MDB_KEY_PREFIX] = cfg.prefix || ''
-        this[K_MDB_CONNECTION_POOL] = Redis_ConnectionPool('langleyRedisPool', redis_cfg)
+        this[K_MDB_CONNECTION_POOL] = Redis_ConnectionPool.default('langleyRedisPool', redis_cfg)
     }
 
     async set (key, val) {

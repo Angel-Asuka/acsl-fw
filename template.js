@@ -19,7 +19,7 @@ const K_TEMPLATE_END_MARK = Symbol()
 
 function compile(name, lupd, str, bm, em){
     let res = []
-    let src = 'module.exports=(res, data, ___inc___)=>{let ___output = ""; const print=function(){for(let v of arguments) ___output += v;}\nconst include=function(p,d){print(___inc___(p,d));}\n'
+    let src = 'let ___output = ""; const print=function(){for(let v of arguments) ___output += v;}\nconst include=function(p,d){print(___inc___(p,d));}\n'
     let s = str
 
     while(s.length){
@@ -60,13 +60,11 @@ function compile(name, lupd, str, bm, em){
 
     }
 
-    src += "return ___output; }"
-    const m = new module.constructor();
-    m._compile(src, name);
+    src += "return ___output; "
 
     return {
         res : res,
-        func : m.exports,
+        func : new Function('res', 'data', '___inc___', src),
         lastUpdate : lupd
     }
 }
