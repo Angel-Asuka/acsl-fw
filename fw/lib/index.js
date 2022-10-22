@@ -1,4 +1,4 @@
-/** @module langley */
+/** @module langley/framework */
 
 export {App} from './app.js'
 export {http, Http} from './http.js'

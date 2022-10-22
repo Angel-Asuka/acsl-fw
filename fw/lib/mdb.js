@@ -84,7 +84,7 @@ class MDB{
         })
     }
 
-    async hget (key, field, val) {
+    async hget (key, field) {
         return new Promise(resolve => {
             this[K_MDB_CONNECTION_POOL].hget(this[K_MDB_KEY_PREFIX]+key, field, (err, val) => {
                 if (err)
@@ -95,7 +95,7 @@ class MDB{
         })
     }
 
-    async hgetall (key, val) {
+    async hgetall (key) {
         return new Promise(resolve => {
             this[K_MDB_CONNECTION_POOL].hgetall(this[K_MDB_KEY_PREFIX]+key, (err, val) => {
                 if (err)

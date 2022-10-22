@@ -101,8 +101,8 @@ export class App{
         this[K_APP_MODULES] = {}
         this[K_APP_ERRPAGES] = {}
         this[K_APP_INIT_LIST] = []
-        this.Utils = utils
-        this.Http = http
+        this.utils = utils
+        this.http = http
         if (!cfg.root) cfg.root = './'
         else if (cfg.root[cfg.root.length - 1] != '/') cfg.root += '/'
     }

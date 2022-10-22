@@ -147,7 +147,7 @@ class Utils{
 
     //#region 当前 Unix 时间戳
     get ts() {
-        return Math.floor(Date.now() / 1000)
+        return parseInt(Date.now() / 1000)
     }
     //#endregion
 

@@ -161,7 +161,7 @@ window.Langley = {
             if(k == 'style')
                 for(let s in def[k]) ele.style[s] = def[k][s]
             else if(k == 'children')
-                for(let c in def[k]) ele.appendChild(window.Langley.build(def[k][c], root))
+                for(let c of def[k]) ele.appendChild(window.Langley.build(c, root))
             else if(k == 'xid')
                 root[def[k]] = ele
             else
