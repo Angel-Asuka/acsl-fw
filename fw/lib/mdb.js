@@ -12,7 +12,7 @@
     }
 */
 
-import * as Redis_ConnectionPool from 'redis-connection-pool'
+import {RedisConnectionPool} from 'redis-connection-pool'
 
 const K_MDB_CONNECTION_POOL = Symbol()
 const K_MDB_KEY_PREFIX = Symbol()
@@ -35,7 +35,7 @@ class MDB{
             }
         }
         this[K_MDB_KEY_PREFIX] = cfg.prefix || ''
-        this[K_MDB_CONNECTION_POOL] = Redis_ConnectionPool.default('langleyRedisPool', redis_cfg)
+        this[K_MDB_CONNECTION_POOL] = new RedisConnectionPool('acslfwRedisPool', redis_cfg)
     }
 
     async set (key, val) {
