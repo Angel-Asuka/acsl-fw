@@ -5,6 +5,19 @@ export type Req = {
     [key:string]:any
 }
 
+export type MessageEvent = {
+    target: Conn,
+    data: any,
+    [key:string]:any
+}
+
+export type Conn = {
+    send(data:string):void
+    terminate():void
+    set onmessage(p:(ev:MessageEvent)=>void)
+    [key:string]:any
+}
+
 export class Rsp{
     /**
      * 通过 HTTP CODE 来发出跳转指令
@@ -22,7 +35,8 @@ type AppProcessor = RequestProcessor | {
     method?: Array<'GET'|'POST'|'PUT'|'DELETE'|'WS'>,
     preprocessingChain?: PreProcessingChain,
     postprocessingChain?: PostProcessingChain,
-    proc: RequestProcessor,
+    proc?: RequestProcessor,
+    conn?: (req:Req, ws:Conn, app:App)=>Promise<void>,
     [key:string]:any
 }
 

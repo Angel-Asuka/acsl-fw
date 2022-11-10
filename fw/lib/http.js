@@ -5,6 +5,7 @@
 */
 
 import axios from 'axios'
+import WebSocket from 'ws'
 
 class Http{
     constructor() {}
@@ -28,6 +29,18 @@ class Http{
                 console.log(error)
                 resolve(null)
             })
+        });
+    }
+
+    async ws(url){
+        const s = new WebSocket(url)
+        return new Promise((resolve, reject) => {
+            const timer = setInterval(() => {
+                if(ws.readyState === 1) {
+                    clearInterval(timer)
+                    resolve(ws);
+                }
+            }, 10);
         });
     }
 

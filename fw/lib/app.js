@@ -45,6 +45,7 @@ import {http} from './http.js'
 
 const K_APP_CONFIG = Symbol()
 const K_APP_ROUTINE = Symbol()
+const K_APP_WSROUTINE = Symbol()
 const K_APP_MODULES = Symbol()
 const K_APP_ERRPAGES = Symbol()
 const K_APP_CONFIG_DATA = Symbol()
@@ -104,6 +105,7 @@ export class App{
         this[K_APP_CONFIG] = cfg
         this[K_APP_CONFIG_DATA] = cfg.data
         this[K_APP_ROUTINE] = {}
+        this[K_APP_WSROUTINE] = {}
         this[K_APP_MODULES] = {}
         this[K_APP_ERRPAGES] = {}
         this[K_APP_INIT_LIST] = []
@@ -119,11 +121,12 @@ export class App{
         const full_path = (mod==null)?path:((mod.prefix || '') + path)
         const default_preprocessingChain = (mod==null)?null:(('preprocessingChain' in mod) ? mod.preprocessingChain : null)
         const defulat_postprocessingChain = (mod==null)?null:(('postprocessingChain' in mod) ? mod.postprocessingChain : null)
-
         if(typeof(proc) == 'function'){
             this[K_APP_ROUTINE][full_path] = {
                 GET: true,
                 POST: true,
+                PUT: false,
+                DELETE: false,
                 preprocessingChain: default_preprocessingChain,
                 postprocessingChain: defulat_postprocessingChain,
                 proc: proc.bind(mod),
@@ -132,16 +135,25 @@ export class App{
                 cfg: proc
             }
         }else if(typeof(proc) == 'object'){
-            this[K_APP_ROUTINE][full_path] = {
+            const procObj = {
                 GET: (proc.method && proc.method.indexOf('GET') >= 0),
                 POST: (proc.method && proc.method.indexOf('POST') >= 0),
+                PUT: (proc.method && proc.method.indexOf('PUT') >= 0),
+                DELETE: (proc.method && proc.method.indexOf('DELETE') >= 0),
                 preprocessingChain: proc.preprocessingChain ? proc.preprocessingChain : default_preprocessingChain,
                 postprocessingChain: proc.postprocessingChain ? proc.postprocessingChain : defulat_postprocessingChain,
-                proc: proc.proc.bind(mod),
+                proc: proc.proc?proc.proc.bind(mod):null,
+                wsproc: proc.conn?proc.conn.bind(mod):null,
                 mod: mod,
                 path: path,
                 cfg: proc
             }
+            if(procObj.wsproc){
+                this[K_APP_WSROUTINE][full_path+'/.websocket'] = procObj
+                this[K_APP_CONFIG].ws = true
+            }
+            if(procObj.proc)
+                this[K_APP_ROUTINE][full_path] = procObj
         }
     }
 
@@ -275,6 +287,16 @@ export class App{
         srv.use(cookieParser());
         if (this[K_APP_CONFIG].static)
             srv.use(express.static(this[K_APP_CONFIG].root + this[K_APP_CONFIG].static));
+        if (this[K_APP_CONFIG].ws){
+            expressWs(srv);
+            srv.ws('*', async (ws, req)=>{
+                if (req.path in this[K_APP_WSROUTINE])
+                    return await this[K_APP_WSROUTINE][req.path].wsproc(req, ws, this);
+                else
+                    ws.terminate()
+            })
+        }
+        
         srv.all('*', async (req, res) => {
             if (req.path in this[K_APP_ROUTINE]) {
                 const func = this[K_APP_ROUTINE][req.path];

@@ -1,6 +1,6 @@
 /** @module langley/framework */
 
-export {App,Rsp} from './app.js'
+export {App} from './app.js'
 export {http, Http} from './http.js'
 export {DB} from './db.js'
 export {MDB} from './mdb.js'
