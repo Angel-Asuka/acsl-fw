@@ -36,6 +36,7 @@
 
 import * as fs from 'fs'
 import express from 'express';
+import expressWs from 'express-ws';
 import bodyParser from 'body-parser'
 import cookieParser from 'cookie-parser'
 import {Template} from './template.js'
@@ -59,8 +60,13 @@ const K_APP_RESPONSE = Symbol()
 
 const REG_IP = /\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/
 
+export class Rsp{
+    redirect(url){}
+}
+
 /** 应用类 */
 export class App{
+    
     //#region constructor
     /**
      * 创建一个应用对象
@@ -105,8 +111,39 @@ export class App{
         this.http = http
         if (!cfg.root) cfg.root = './'
         else if (cfg.root[cfg.root.length - 1] != '/') cfg.root += '/'
+        cfg.ws = false
     }
     //#endregion
+
+    registerProcessor(path, proc, mod){
+        const full_path = (mod==null)?path:((mod.prefix || '') + path)
+        const default_preprocessingChain = (mod==null)?null:(('preprocessingChain' in mod) ? mod.preprocessingChain : null)
+        const defulat_postprocessingChain = (mod==null)?null:(('postprocessingChain' in mod) ? mod.postprocessingChain : null)
+
+        if(typeof(proc) == 'function'){
+            this[K_APP_ROUTINE][full_path] = {
+                GET: true,
+                POST: true,
+                preprocessingChain: default_preprocessingChain,
+                postprocessingChain: defulat_postprocessingChain,
+                proc: proc.bind(mod),
+                mod: mod,
+                path: path,
+                cfg: proc
+            }
+        }else if(typeof(proc) == 'object'){
+            this[K_APP_ROUTINE][full_path] = {
+                GET: (proc.method && proc.method.indexOf('GET') >= 0),
+                POST: (proc.method && proc.method.indexOf('POST') >= 0),
+                preprocessingChain: proc.preprocessingChain ? proc.preprocessingChain : default_preprocessingChain,
+                postprocessingChain: proc.postprocessingChain ? proc.postprocessingChain : defulat_postprocessingChain,
+                proc: proc.proc.bind(mod),
+                mod: mod,
+                path: path,
+                cfg: proc
+            }
+        }
+    }
 
     //#region load(x)
     /**
@@ -118,37 +155,15 @@ export class App{
      */
     async load(x, name){
         if(typeof(x) == 'object'){
-            const prefix = x.prefix || ''
-            const default_preprocessingChain = ('preprocessingChain' in x) ? x.preprocessingChain : null
-            const defulat_postprocessingChain = ('postprocessingChain' in x) ? x.postprocessingChain : null
             if(!x.preprocessors) x.preprocessors = {}
             if(!x.postprocessors) x.postprocessors = {}
             for(let p in x){
-                if (p[0] == '/'){
-                    const path = prefix + p
-                    if(typeof(x[p]) == 'function'){
-                        this[K_APP_ROUTINE][path] = {
-                            GET: true,
-                            POST: true,
-                            preprocessingChain: default_preprocessingChain,
-                            postprocessingChain: defulat_postprocessingChain,
-                            proc: x[p].bind(x),
-                            mod: x,
-                            path: p,
-                            cfg: x[p]
-                        }
-                    }else if(typeof(x[p]) == 'object'){
-                        this[K_APP_ROUTINE][path] = {
-                            GET: (x[p].method && x[p].method.indexOf('GET') >= 0),
-                            POST: (x[p].method && x[p].method.indexOf('POST') >= 0),
-                            preprocessingChain: x[p].preprocessingChain ? x[p].preprocessingChain : default_preprocessingChain,
-                            postprocessingChain: x[p].postprocessingChain ? x[p].postprocessingChain : defulat_postprocessingChain,
-                            proc: x[p].proc.bind(x),
-                            mod: x,
-                            path: p,
-                            cfg: x[p]
-                        }
-                    }
+                if (p[0] == '/')
+                    this.registerProcessor(p, x[p], x)
+            }
+            if(typeof(x.processors) == 'object'){
+                for(let p in x.processors){
+                    this.registerProcessor((p[0] == '/')?p:('/' + p), x.processors[p], x)
                 }
             }
             if ('name' in x)

@@ -1,0 +1,14 @@
+{
+    "compilerOptions": {
+      "module":"ES2015",
+      "lib": ["es2015"],
+      "types": [],
+      "moduleResolution": "node",
+      "strict": true,
+      "noEmit": true,
+      "baseUrl": ".", 
+      "paths": {
+        "@acsl/fw": ["."]
+      }
+    }
+  }
