@@ -7,7 +7,7 @@
 import { createSign, createVerify, createDecipheriv, createHash, randomUUID } from 'crypto'
 import { exec } from 'child_process'
 
-class Utils{
+class _Utils{
     constructor(){}
 
     //#region Signature_RSA_SHA256 计算 RSA_SHA256 签名
@@ -184,6 +184,6 @@ class Utils{
 
 }
 
-const utils = new Utils()
+const Utils = new _Utils()
 
-export {utils, Utils}
+export {Utils}

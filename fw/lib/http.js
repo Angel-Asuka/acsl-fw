@@ -32,8 +32,8 @@ class Http{
         });
     }
 
-    async ws(url){
-        const s = new WebSocket(url)
+    async ws(url, options){
+        const s = new WebSocket(url, options)
         return new Promise((resolve, reject) => {
             const timer = setInterval(() => {
                 if(ws.readyState === 1) {

@@ -40,8 +40,10 @@ import expressWs from 'express-ws';
 import bodyParser from 'body-parser'
 import cookieParser from 'cookie-parser'
 import {Template} from './template.js'
-import {utils} from './utils.js'
+import {Utils} from './utils.js'
 import {http} from './http.js'
+import * as httpsys from 'http'
+import * as httpssys from 'https'
 
 const K_APP_CONFIG = Symbol()
 const K_APP_ROUTINE = Symbol()
@@ -81,6 +83,11 @@ export class App{
      *      root : root_path,       // 工程目录，后续所有路径配置都应该相对于根目录来配置
      *      addr : "0.0.0.0",       // 监听地址
      *      port : 80,              // 监听端口，默认80
+     *      ssl : {
+     *          crt : '',           // SSL 证书
+     *          key : '',           // SSL 私钥
+     *          ca : ''             // 用于客户端校验的 CA 证书
+     *      }
      *      app : "app",            // 模块文件目录，langley 会自动扫描并尝试加载该目录下的所有 js 文件中的对象，成功加载的对象将可以通过 app.*** 来访问
      *      modules : {},           // 额外的模块表，之后可以通过 app.modules.*** 来访问其中的对象
      *      static :  "static",     // 静态路径， langley 将为该目录下的文件提供静态 http 服务
@@ -109,7 +116,7 @@ export class App{
         this[K_APP_MODULES] = {}
         this[K_APP_ERRPAGES] = {}
         this[K_APP_INIT_LIST] = []
-        this.utils = utils
+        this.Utils = Utils
         this.http = http
         if (!cfg.root) cfg.root = './'
         else if (cfg.root[cfg.root.length - 1] != '/') cfg.root += '/'
@@ -119,8 +126,8 @@ export class App{
 
     registerProcessor(path, proc, mod){
         const full_path = (mod==null)?path:((mod.prefix || '') + path)
-        const default_preprocessingChain = (mod==null)?null:(('preprocessingChain' in mod) ? mod.preprocessingChain : null)
-        const defulat_postprocessingChain = (mod==null)?null:(('postprocessingChain' in mod) ? mod.postprocessingChain : null)
+        const default_preprocessingChain = (mod==null)?null:(('preprocessingChain' in mod) ? mod.preprocessingChain : [])
+        const defulat_postprocessingChain = (mod==null)?null:(('postprocessingChain' in mod) ? mod.postprocessingChain : [])
         if(typeof(proc) == 'function'){
             this[K_APP_ROUTINE][full_path] = {
                 GET: true,
@@ -149,6 +156,7 @@ export class App{
                 cfg: proc
             }
             if(procObj.wsproc){
+                console.log(full_path)
                 this[K_APP_WSROUTINE][full_path+'/.websocket'] = procObj
                 this[K_APP_CONFIG].ws = true
             }
@@ -280,15 +288,32 @@ export class App{
     async run() {
         await this[K_APP_LOAD]()
 
-        if (!this[K_APP_CONFIG].port) this[K_APP_CONFIG].port = 80
         const srv = express();
         srv.use(bodyParser.urlencoded({ extended: true }));
         srv.use(bodyParser.json());
         srv.use(cookieParser());
         if (this[K_APP_CONFIG].static)
             srv.use(express.static(this[K_APP_CONFIG].root + this[K_APP_CONFIG].static));
+
+        if(this[K_APP_CONFIG].ssl){
+            if (!this[K_APP_CONFIG].port) this[K_APP_CONFIG].port = 443
+            const credentials = {
+                cert:this[K_APP_CONFIG].ssl.crt,
+                key:this[K_APP_CONFIG].ssl.key
+            }
+            if(this[K_APP_CONFIG].ssl.ca){
+                credentials.ca = this[K_APP_CONFIG].ssl.ca
+                credentials.requestCert = true
+                credentials.rejectUnauthorized = true
+            }
+            srv._listener = httpssys.createServer(credentials, srv);
+        }else{
+            if (!this[K_APP_CONFIG].port) this[K_APP_CONFIG].port = 80
+            srv._listener = httpsys.createServer(srv);
+        }
+
         if (this[K_APP_CONFIG].ws){
-            expressWs(srv);
+            expressWs(srv, srv._listener);
             srv.ws('*', async (ws, req)=>{
                 if (req.path in this[K_APP_WSROUTINE])
                     return await this[K_APP_WSROUTINE][req.path].wsproc(req, ws, this);
@@ -400,6 +425,7 @@ export class App{
             itm.preprocessingChain = pre
             itm.postprocessingChain = post
         }
-        srv.listen(this[K_APP_CONFIG].port, this[K_APP_CONFIG].addr);
+        
+        srv._listener.listen(this[K_APP_CONFIG].port, this[K_APP_CONFIG].addr)
     }
 }

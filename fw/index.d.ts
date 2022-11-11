@@ -44,6 +44,11 @@ type AppConfig = {
     root?:string,
     addr?:string,
     port?:number,
+    ssl?:{
+        crt:string,
+        key:string,
+        ca?:string
+    },
     app?:string,
     modules?:object,
     static?:string,
@@ -89,6 +94,10 @@ export class App {
     registerPreprocessor(name:string, proc:PreProcessor):void
     registerPostprocessor(name:string, proc:PostProcessor):void
     run():never
+}
+
+export type Utils = {
+
 }
 
 declare const app:App;
