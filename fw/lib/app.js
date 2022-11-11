@@ -40,8 +40,6 @@ import expressWs from 'express-ws';
 import bodyParser from 'body-parser'
 import cookieParser from 'cookie-parser'
 import {Template} from './template.js'
-import {Utils} from './utils.js'
-import {http} from './http.js'
 import * as httpsys from 'http'
 import * as httpssys from 'https'
 
@@ -116,8 +114,6 @@ export class App{
         this[K_APP_MODULES] = {}
         this[K_APP_ERRPAGES] = {}
         this[K_APP_INIT_LIST] = []
-        this.Utils = Utils
-        this.http = http
         if (!cfg.root) cfg.root = './'
         else if (cfg.root[cfg.root.length - 1] != '/') cfg.root += '/'
         cfg.ws = false
@@ -226,7 +222,13 @@ export class App{
         }
 
         this.Template = new Template()
-        if (cfg.template) this.Template.set({root:cfg.root + cfg.template})
+        if (cfg.template){
+            if (typeof cfg.template === 'string')
+                this.Template.set({root:cfg.root + cfg.template})
+            else if(typeof cfg.template === 'object'){
+                this.Template.set(cfg.template, cfg.root)
+            }
+        }
         
 
         // 将配置的模块加入模块列表

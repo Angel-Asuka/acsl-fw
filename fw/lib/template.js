@@ -77,10 +77,10 @@ class Template{
         if(cfg) this.set(cfg)
     }
 
-    set(cfg){
+    set(cfg, root){
         // CFG - 模板目录
         if(cfg.root){
-            this[K_TEMPLATE_ROOT] = cfg.root
+            this[K_TEMPLATE_ROOT] = (root || '') + cfg.root
             if(this[K_TEMPLATE_ROOT][this[K_TEMPLATE_ROOT].length-1] != '/') this[K_TEMPLATE_ROOT] += '/'
         }
         // CFG - 起始标记
