@@ -2,10 +2,15 @@
     "name": "@acsl/fw",
     "version": "1.2.4",
     "type": "module",
-    "types": "index.d.ts",
     "description": "AW Service Framework",
     "exports": {
-        ".": "./lib/index.js"
+        ".": "./lib/index.js",
+        "./utils": "./lib/utils.js",
+        "./db": "./lib/db.js",
+        "./mdb": "./lib/mdb.js",
+        "./http": "./lib/http.js",
+        "./template": "./lib/template.js",
+        "./crypto": "./lib/crypto.js"
     },
     "scripts": {},
     "author": "AngelAsuka",

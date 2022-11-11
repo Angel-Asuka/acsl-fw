@@ -1,7 +1,7 @@
 'use strict'
 
-import {randomBytes, randomUUID, timeStampS, createHash, createSign, createVerify, createDecipheriv} from 'crypto'
-import {syncObject} from './utils.js'
+import {randomBytes, randomUUID, createHash, createSign, createVerify, createDecipheriv} from 'crypto'
+import {syncObject, timeStampS} from './utils.js'
 
 const DefaultRandomStringDict = '1234567890QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm'
 
