@@ -10,7 +10,8 @@
         "./mdb": "./lib/mdb.js",
         "./http": "./lib/http.js",
         "./template": "./lib/template.js",
-        "./crypto": "./lib/crypto.js"
+        "./crypto": "./lib/crypto.js",
+        "./cs": "./lib/cs.js"
     },
     "scripts": {},
     "author": "AngelAsuka",
