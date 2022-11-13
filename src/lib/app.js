@@ -120,6 +120,52 @@ export class App{
     }
     //#endregion
 
+    /**
+     * 注册一个 GET 请求处理方法
+     * @param {string} path 路径
+     * @param {function} proc 处理方法
+     * @param {mod} 处理方法要绑定的this对象
+     */
+    GET(path, proc, mod){ this.registerProcessor(path, {method:['GET'], proc:proc, mod}) }
+
+    /**
+     * 注册一个 POST 请求处理方法
+     * @param {string} path 路径
+     * @param {function} proc 处理方法
+     * @param {mod} 处理方法要绑定的this对象
+     */
+    POST(path, proc, mod){ this.registerProcessor(path, {method:['POST'], proc:proc, mod}) }
+
+    /**
+     * 注册一个 PUT 请求处理方法
+     * @param {string} path 路径
+     * @param {function} proc 处理方法
+     * @param {mod} 处理方法要绑定的this对象
+     */
+    PUT(path, proc, mod){ this.registerProcessor(path, {method:['PUT'], proc:proc, mod}) }
+
+    /**
+     * 注册一个 DELETE 请求处理方法
+     * @param {string} path 路径
+     * @param {function} proc 处理方法
+     * @param {mod} 处理方法要绑定的this对象
+     */
+    DELETE(path, proc, mod){ this.registerProcessor(path, {method:['DELETE'], proc:proc, mod}) }
+
+    /**
+     * 注册一个 WebSocket 连接处理方法
+     * @param {string} path 路径
+     * @param {function} proc 处理方法
+     * @param {mod} 处理方法要绑定的this对象
+     */
+    WS(path, proc, mod){ this.registerProcessor(path, {conn:proc}, mod) }
+
+    /**
+     * 注册一个请求处理器
+     * @param {string} path 路径
+     * @param {function|object} proc 处理器
+     * @param {object|null} mod 模块
+     */
     registerProcessor(path, proc, mod){
         const full_path = (mod==null)?path:((mod.prefix || '') + path)
         const default_preprocessingChain = (mod==null)?null:(('preprocessingChain' in mod) ? mod.preprocessingChain : [])
@@ -152,7 +198,6 @@ export class App{
                 cfg: proc
             }
             if(procObj.wsproc){
-                console.log(full_path)
                 this[K_APP_WSROUTINE][full_path+'/.websocket'] = procObj
                 this[K_APP_CONFIG].ws = true
             }
