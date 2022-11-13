@@ -12,8 +12,8 @@ import { exec } from 'child_process'
  * @param {object} ref 参考对象
  */
 export function syncObject(obj, ref){
-    if(typeof obj === typeof ref === 'object')
-    for(k in obj) if(k in ref) obj[k] = ref[k]
+    if(typeof obj == 'object' && typeof ref == 'object')
+    for(let k in obj) if(k in ref) obj[k] = ref[k]
 }
 
 /**
@@ -231,6 +231,6 @@ export class TimeWheel{
         for(let i=objs.length-1; i>=0; --i){
             this[K_TIMEWHEEL_CB](objs[i], objs[i][K_TIMEWHEEL_WRAPPER_OBJ], this);
         }
-        this[K_TIMEWHEEL_POINTER] = (this[K_TIMEWHEEL_POINTER] + 1) % this[K_TIMEWHEEL_WHEEL]
+        this[K_TIMEWHEEL_POINTER] = (this[K_TIMEWHEEL_POINTER] + 1) % this[K_TIMEWHEEL_WHEEL].length
     }
 }

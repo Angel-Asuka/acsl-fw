@@ -158,7 +158,7 @@ export class App{
      * @param {function} proc 处理方法
      * @param {mod} 处理方法要绑定的this对象
      */
-    WS(path, proc, mod){ this.registerProcessor(path, {wsproc:proc}, mod) }
+    WS(path, proc, mod){ this.registerProcessor(path, {conn:proc}, mod) }
 
     /**
      * 注册一个请求处理器
@@ -198,7 +198,6 @@ export class App{
                 cfg: proc
             }
             if(procObj.wsproc){
-                console.log(full_path)
                 this[K_APP_WSROUTINE][full_path+'/.websocket'] = procObj
                 this[K_APP_CONFIG].ws = true
             }
