@@ -78,7 +78,7 @@ type AppModule = {
     [key:string]:any
 };
 
-export class App {
+export class Server {
     constructor(cfg : AppConfig)
     get Template() : import('./template').Template
 
