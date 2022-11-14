@@ -1,4 +1,4 @@
-declare type App = import('./app').App
+declare type App = import('./app').Server
 
 /**
  * 客户端连接事件处理方法
@@ -96,18 +96,18 @@ export class Client{
      * @param url 服务端URL
      * @param opt WebSocket 选项
      */
-    open(url?:string, opt?:object)
+    open(url?:string, opt?:object):void
 
     /**
      * 断开连接
      */
-    close()
+    close():void
 
     /**
      * 发送消息
      * @param msg 要发送的消息
      */
-    send(msg:any)
+    send(msg:any):void
 }
 
 type ServerConfig = {
@@ -153,12 +153,12 @@ export class Server{
      * 关闭连接
      * @param conn 连接对象
      */
-    close(conn:Conn)
+    close(conn:Conn):void
 
     /**
      * 向连接发送数据
      * @param conn 连接对象
      * @param data 要发送的数据
      */
-    send(conn:Conn, data:any)
+    send(conn:Conn, data:any):void
 }
