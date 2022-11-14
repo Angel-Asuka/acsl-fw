@@ -237,6 +237,24 @@ export class Client{
     }
 }
 
+const K_CS_CON_SRV = Symbol()
+const K_CS_CON_WS = Symbol()
+
+export class Conn{
+    constructor(ws, srv){
+        this[K_CS_CON_WS] = ws
+        this[K_CS_CON_SRV] = srv
+    }
+
+    close(){
+        this[K_CS_CON_SRV].close(this)
+    }
+
+    send(data){
+        this[K_CS_CON_SRV].send(this, data)
+    }
+}
+
 /**
  * CS 服务端对象
  */
@@ -313,18 +331,22 @@ export class Server{
      * @param {object} conn 连接对象
      */
     close(conn){
-        conn.onmessage = null
-        conn.onclose = null
-        conn.onerror = null
-        if(this[K_CS_TW] && conn.twid){
-            this[K_CS_TW].remove(conn.twid)
-            conn.twid = null
+        if(conn[K_CS_CON_WS])
+            this.close(conn[K_CS_CON_WS])
+        else{
+            conn.onmessage = null
+            conn.onclose = null
+            conn.onerror = null
+            if(this[K_CS_TW] && conn.twid){
+                this[K_CS_TW].remove(conn.twid)
+                conn.twid = null
+            }
+            conn.cs = null
+            conn.terminate()
+            try{
+                this[K_CS_ON_CLO](conn.ifc, this)
+            }catch(e){console.log(e)}
         }
-        conn.cs = null
-        conn.terminate()
-        try{
-            this[K_CS_ON_CLO](conn, this)
-        }catch(e){console.log(e)}
     }
     
     /**
@@ -333,16 +355,20 @@ export class Server{
      * @param {any} data 要发送的数据
      */
     send(conn, data){
-        if(conn.cs) conn.cs.send(data)
+        if(conn[K_CS_CON_WS])
+            this.send(conn[K_CS_CON_WS])
+        else
+            if(conn.cs) conn.cs.send(data)
     }
 
     [K_CS_ENTRY](req, ws, app){
         ws.cs = new Protocol(ws, true)
         ws.onmessage = this[K_CS_MSG_PROC].bind(this)
         ws.onclose = ws.onerror = this[K_CS_CLO_PROC].bind(this)
+        ws.ifc = new Conn(ws, this)
         if(this[K_CS_TW]) ws.twid = this[K_CS_TW].join(ws)
         try{
-            this[K_CS_ON_CON](ws, this)
+            this[K_CS_ON_CON](ws.ifc, this)
         }catch(e){console.log(e)}
     }
 
@@ -356,7 +382,7 @@ export class Server{
             const msgs = ev.target.cs.read()
             for(let m of msgs){
                 try{
-                    this[K_CS_ON_MSG](m, ev.target, this)
+                    this[K_CS_ON_MSG](m, ev.target.ifc, this)
                 }catch(e){console.log(e)}
                 if(ev.target.cs == null) return
             }

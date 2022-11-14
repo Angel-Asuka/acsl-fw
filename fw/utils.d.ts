@@ -23,7 +23,7 @@ export function timeStampS():number
  * @param str JSON字符串
  * @returns 解析成功返回 Json 对象， 失败返回 null
  */
-export function parseJson(str:string):object|null
+export function parseJson(str:string):any
 
 /**
  * 简单脱敏处理（添加星号）
@@ -58,3 +58,81 @@ export function formatTS(ts:any, fmt:TimeFormat):string
  * @returns 识别出来的 Unix 时间戳
  */
 export function parseTS(ts:string):number
+
+/**
+ * 解析命令行参数
+ * @param {object} keys 带值参数表
+ * @param {object} options 选项参数表
+ * @param {Array} argv 命令行 
+ * @param {function} onerr 错误处理函数
+ * @example
+ *  It's never been a bad choice to setting up onerr like this: 
+ *   (k)=>{
+ *       if(t in options)
+ *           console.log(`Uncomplete option ${prev}`)
+ *       else
+ *           console.log(`Unknown option ${prev}`)
+ *       process.exit()
+ *   }
+ */
+export function parseArgv(keys?:any, options?:any, argv?:Array<string>, onerr?:(k:string)=>void):object
+
+
+export type TimeWhellItem = {}
+
+/**
+ * 时间轮
+ */
+export class TimeWheel{
+    /**
+     * 构造一个时间轮
+     * @param unit 单位事件长度（毫秒）
+     * @param size 时间轮长度
+     * @param cb 回调函数
+     * @param udata 用户数据
+     * @example
+     * 下面的代码中：
+     *      idx = 对象在时间轮中的ID
+     *      obj = 对象
+     *      wheel = 时间轮对象，等同于 tw
+     * 
+     * const tw = new TimeWheel(2000,30,(idx, obj, wheel)=>{
+     *      ...
+     * },null)
+     */
+    constructor(unit:number, size:number, cb:(idx:TimeWhellItem, obj:any, wheel:TimeWheel)=>void, udata:any)
+
+    /**
+     * 启动时间轮
+     */
+    start():void
+
+    /**
+     * 停止时间轮
+     */
+    stop():void
+
+    /**
+     * 将对象插入时间轮
+     * @param obj 对象
+     * @param toffset 时间偏移，默认为 -1
+     * @returns 对象在时间轮中的ID
+     */
+    join(obj:any, toffset:number):TimeWhellItem
+    
+    /**
+     * 从时间轮中删除一个对象
+     * @param o 对象在时间轮中的ID
+     */
+    remove(o:TimeWhellItem):void
+
+    /**
+     * 用户数据
+     */
+    get data():any
+
+    /**
+     * 用户数据
+     */
+    set data(d:any)
+}

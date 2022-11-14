@@ -18,9 +18,12 @@ type ClientCloseProc = (cli:Client) => void
   * @param cli 相关的连接对象
   */
 type ClientMessageProc = (msg:Buffer, cli:Client) => void
- 
 
-type Conn = {}
+export type Conn = {
+    send(msg:Buffer):void
+    close():void
+    [key:string]:any
+}
 
 /**
  * 连接事件处理方法
