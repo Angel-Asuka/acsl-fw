@@ -155,6 +155,7 @@ export function parseArgv(keys, options, argv, onerr){
             prev = v
     }
     if(prev != '') onerr(prev)
+    return cmdline
 }
 
 export {TimeWheel} from './utils-timewheel.js'
