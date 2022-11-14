@@ -66,7 +66,7 @@ export class Rsp{
 }
 
 /** 应用类 */
-export class App{
+export class Server{
     
     //#region constructor
     /**

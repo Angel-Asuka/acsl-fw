@@ -27,12 +27,12 @@ export class Rsp{
     redirect:(uri:string)=>void
 }
 
-type PreProcessor = (req:Req, rsp:Rsp, app:App)=>Promise<string|void>
-type PostProcessor = (req:Req, rsp:Rsp, app:App, ret:string)=>Promise<string|void>
+type PreProcessor = (req:Req, rsp:Rsp, app:Server)=>Promise<string|void>
+type PostProcessor = (req:Req, rsp:Rsp, app:Server, ret:string)=>Promise<string|void>
 type PreProcessingChain = Array<string|PreProcessor>
 type PostProcessingChain = Array<string|PostProcessor>
-type RequestProcessor = (req:Req, rsp:Rsp, app:App)=>Promise<string|object|void>
-type WSProcessor = (req:Req, ws:Conn, app:App)=>Promise<void>
+type RequestProcessor = (req:Req, rsp:Rsp, app:Server)=>Promise<string|object|void>
+type WSProcessor = (req:Req, ws:Conn, app:Server)=>Promise<void>
 type AppProcessor = RequestProcessor | {
     method?: Array<'GET'|'POST'|'PUT'|'DELETE'|'WS'>,
     preprocessingChain?: PreProcessingChain,
@@ -57,7 +57,7 @@ type AppConfig = {
     template?:string | import('./template').TemplateConfig,
     errpages?:string,
     data?:object,
-    init?:(app:App)=>void,
+    init?:(app:Server)=>void,
     hooks?:{
         preprocessors?: {[key:string]:PreProcessor},
         postprocessors?: {[key:string]:PostProcessor},
@@ -69,7 +69,7 @@ type AppConfig = {
 type AppModule = {
     name?:string,
     prefix?:string,
-    init?:(app:App)=>Promise<void>,
+    init?:(app:Server)=>Promise<void>,
     preprocessors?: {[key:string]:PreProcessor},
     postprocessors?: {[key:string]:PostProcessor},
     preprocessingChain?: PreProcessingChain,
