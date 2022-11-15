@@ -100,7 +100,7 @@ export class TimeWheel{
      *      ...
      * },null)
      */
-    constructor(unit:number, size:number, cb:(idx:TimeWhellItem, obj:any, wheel:TimeWheel)=>void, udata:any)
+    constructor(unit:number, size:number, cb:(idx:TimeWhellItem, obj:any, wheel:TimeWheel)=>void, udata?:any)
 
     /**
      * 启动时间轮
@@ -118,7 +118,7 @@ export class TimeWheel{
      * @param toffset 时间偏移，默认为 -1
      * @returns 对象在时间轮中的ID
      */
-    join(obj:any, toffset:number):TimeWhellItem
+    join(obj:any, toffset?:number):TimeWhellItem
     
     /**
      * 从时间轮中删除一个对象
