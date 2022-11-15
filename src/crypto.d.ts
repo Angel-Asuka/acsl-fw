@@ -62,7 +62,7 @@ export function randomHex(length:number):string
  * @param {object} options 选项
  * @returns {nonce: string, ts: number, sign: string}
  */
-export function makeSignature(data:any, key:string, options?:{method?:SignatureMethod, nonceLength?:number, nonceDict?: string}):string
+export function MakeSignature(data:any, key:string, options?:{method?:SignatureMethod, nonceLength?:number, nonceDict?: string}):{nonce: string,ts: number,sign: string, [k:string]:any}|null
 
 /**
  * 验证签名数据
@@ -72,4 +72,4 @@ export function makeSignature(data:any, key:string, options?:{method?:SignatureM
  * @param {object} options 选项
  * @returns 验证通过返回 true，否则返回 false
  */
-export function VerifySignature(data:any, key:string, sign:{nonce:string,ts:number,sign:string}, options?:{method?:SignatureMethod, nonceLength?:number, nonceDict?: string, maxDeltaT: number}):boolean
+export function VerifySignature(data:any, key:string, sign:{nonce:string,ts:number,sign:string}, options?:{method?:SignatureMethod, maxDeltaT?: number}):boolean

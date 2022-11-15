@@ -50,7 +50,6 @@ export class Protocol{
                     }
                     if(szmsg == 0){
                         // Heart beat here, ret = 1 means caller should reset alive-check timer
-                        console.log('Beat!')
                         if(this.repbeat) this.send()
                         ret = 1
                     }else{
@@ -356,7 +355,7 @@ export class Server{
      */
     send(conn, data){
         if(conn[K_CS_CON_WS])
-            this.send(conn[K_CS_CON_WS])
+            this.send(conn[K_CS_CON_WS], data)
         else
             if(conn.cs) conn.cs.send(data)
     }

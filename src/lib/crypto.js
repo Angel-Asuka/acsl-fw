@@ -59,7 +59,7 @@ export function uuid(){
  * @returns UUID in HEX
  */
 export function uuidHex(){
-    const u = this.uuid
+    const u = this.uuid()
     return `${u.substr(0,8)}${u.substr(9,4)}${u.substr(14,4)}${u.substr(19,4)}${u.substr(24)}`
 }
 
@@ -82,8 +82,8 @@ export function randomString(length, dict){
     if(!length) length = 32
     if(!dict) dict=DefaultRandomStringDict
     const buf = randomBytes(length)
-    str = ''
-    for(b of buf)
+    let str = ''
+    for(let b of buf)
         str += DefaultRandomStringDict[b % DefaultRandomStringDict.length]
     return str
 }
@@ -120,10 +120,10 @@ export const verifyMethods = {
  * @param {object} options 选项
  * @returns {nonce: string, ts: number, sign: string}
  */
- export function makeSignature(data, key, options){
+ export function MakeSignature(data, key, options){
     const opts = { method: 'sha1', nonceLength: 32, nonceDict: DefaultRandomStringDict }
     syncObject(opts, options)
-    const nonce = RandomString(opts.nonceLength, opts.nonceDict)
+    const nonce = randomString(opts.nonceLength, opts.nonceDict)
     const ts = timeStampS()
     if(opts.method in signatureMethods)
         return {
@@ -143,7 +143,7 @@ export const verifyMethods = {
  * @returns 验证通过返回 true，否则返回 false
  */
 export function VerifySignature(data, key, sign, options){
-    const opts = { method: 'sha1', nonceLength: 32, nonceDict: DefaultRandomStringDict, maxDeltaT:60 }
+    const opts = { method: 'sha1', maxDeltaT:60 }
     syncObject(opts, options)
     const dt = timeStampS() - sign.ts
     if(opts.maxDeltaT > 0 && (dt > opts.maxDeltaT || dt < -opts.maxDeltaT)) return false
