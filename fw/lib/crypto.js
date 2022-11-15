@@ -59,7 +59,7 @@ export function uuid(){
  * @returns UUID in HEX
  */
 export function uuidHex(){
-    const u = this.uuid
+    const u = this.uuid()
     return `${u.substr(0,8)}${u.substr(9,4)}${u.substr(14,4)}${u.substr(19,4)}${u.substr(24)}`
 }
 
