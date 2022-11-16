@@ -19,10 +19,20 @@ type ClientCloseProc = (cli:Client) => void
   */
 type ClientMessageProc = (msg:Buffer, cli:Client) => void
 
+/**
+ * 客户端远程过程调用事件处理方法
+ * @param data 消息数据
+ * @param rpcid 调用ID
+ * @param cli 相关的连接对象
+ */
+type ClientRpcProc = (msg:Buffer, rpcid:number, cli:Client) => void
+
 export type Conn = {
     send(msg:Buffer):void
     close():void
     get clientAddress():string
+    rpc(msg:any):Promise<void>
+    endRpc(msg:any, rpcid:number):void
     [key:string]:any
 }
 
@@ -48,6 +58,14 @@ type CloseProc = (conn:Conn, srv:Server) => void
  */
 type MessageProc = (msg:Buffer, conn:Conn, srv:Server) => void
 
+/**
+ * 客户端远程过程调用事件处理方法
+ * @param data 消息数据
+ * @param rpcid 调用ID
+ * @param cli 相关的连接对象
+ */
+ type RpcProc = (msg:Buffer, rpcid:number, conn:Conn, srv:Server) => void
+
 type ClientConfig = {
     url?:string,
     options?:object
@@ -56,6 +74,7 @@ type ClientConfig = {
         conn?:ClientConnectionProc
         close?:ClientCloseProc
         msg?:ClientMessageProc
+        rpc?:ClientRpcProc
     }
 }
 
@@ -96,6 +115,11 @@ export class Client{
     set messageProc(p:ClientMessageProc)
 
     /**
+     * 远程过程调用事件处理方法
+     */
+    set rpcProc(p:ClientRpcProc)
+
+    /**
      * 连接到服务端
      * @param url 服务端URL
      * @param opt WebSocket 选项
@@ -112,6 +136,19 @@ export class Client{
      * @param msg 要发送的消息
      */
     send(msg:any):void
+
+    /**
+     * 发起远程过程调用
+     * @param msg 请求消息
+     */
+    rpc(msg:any):Promise<void>
+
+    /**
+     * 响应远程过程调用
+     * @param msg 返回消息
+     * @param rpcid 调用ID
+     */
+    endRpc(msg:any, rpcid:number):void
 }
 
 type ServerConfig = {
@@ -122,6 +159,7 @@ type ServerConfig = {
         conn?:ConnectionProc
         close?:CloseProc
         msg?:MessageProc
+        rpc?:RpcProc
     }
 }
 
@@ -154,6 +192,11 @@ export class Server{
     set messageProc(p:MessageProc)
 
     /**
+     * 远程过程调用事件处理方法
+     */
+    set rpcProc(p:RpcProc)
+
+    /**
      * 关闭连接
      * @param conn 连接对象
      */
@@ -165,4 +208,19 @@ export class Server{
      * @param data 要发送的数据
      */
     send(conn:Conn, data:any):void
+
+    /**
+     * 发起远程过程调用
+     * @param conn 连接对象
+     * @param msg 请求消息
+     */
+    rpc(conn:Conn, msg:any):Promise<void>
+
+     /**
+      * 响应远程过程调用
+      * @param conn 连接对象
+      * @param msg 返回消息
+      * @param rpcid 调用ID
+      */
+    endRpc(conn:Conn, msg:any, rpcid:number):void
 }
