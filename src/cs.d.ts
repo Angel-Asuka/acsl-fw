@@ -31,7 +31,7 @@ export type Conn = {
     send(msg:Buffer):void
     close():void
     get clientAddress():string
-    rpc(msg:any):Promise<void>
+    rpc(msg:any):Promise<any>
     endRpc(msg:any, rpcid:number):void
     [key:string]:any
 }
@@ -141,7 +141,7 @@ export class Client{
      * 发起远程过程调用
      * @param msg 请求消息
      */
-    rpc(msg:any):Promise<void>
+    rpc(msg:any):Promise<any>
 
     /**
      * 响应远程过程调用
@@ -214,7 +214,7 @@ export class Server{
      * @param conn 连接对象
      * @param msg 请求消息
      */
-    rpc(conn:Conn, msg:any):Promise<void>
+    rpc(conn:Conn, msg:any):Promise<any>
 
      /**
       * 响应远程过程调用

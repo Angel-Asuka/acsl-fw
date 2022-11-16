@@ -51,9 +51,13 @@ export class Protocol{
                         return -1
                     }
                     if(szmsg == 0){
-                        // Heart beat here, ret = 1 means caller should reset alive-check timer
-                        if(this.repbeat) this.send()
-                        ret = 1
+                        if(this.current_param > 0){
+                            this.msglst.push({msg:Buffer.from(''), param:this.current_param})
+                        }else{
+                            // Heart beat here, ret = 1 means caller should reset alive-check timer
+                            if(this.repbeat) this.send()
+                            ret = 1
+                        }
                     }else{
                         this.ridx = (this.ridx + szmsg) % MESSAGE_IDX_TOKEN
                         this.currentData = Buffer.alloc(szmsg)
@@ -310,7 +314,7 @@ export class Conn{
     }
 
     async rpc(msg){
-        return this[K_CS_CON_SRV].rpc(this, data);
+        return this[K_CS_CON_SRV].rpc(this, msg);
     }
 
     endRpc(msg, rpcid){
