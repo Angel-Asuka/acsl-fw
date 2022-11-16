@@ -11,10 +11,11 @@ export class Protocol{
         this.conn = conn
         this.ridx = MESSAGE_IDX_BEGIN
         this.widx = MESSAGE_IDX_BEGIN
-        this.headerBuf = Buffer.alloc(8)
+        this.headerBuf = Buffer.alloc(12)
         this.currentData = null
         this.header_size = 0
         this.data_size = 0
+        this.current_param = 0
         this.msglst = []
     }
 
@@ -31,7 +32,7 @@ export class Protocol{
                 this.data_size += sz
                 i += sz
                 if(this.data_size == this.currentData.byteLength){
-                    this.msglst.push(this.currentData.toString())
+                    this.msglst.push({msg:this.currentData, param:this.current_param})
                     this.currentData = null
                 }
             }else{
@@ -45,13 +46,18 @@ export class Protocol{
                         return -1
                     }
                     const szmsg = this.headerBuf.readInt32LE(4)
+                    this.current_param = this.headerBuf.readUInt32LE(8)
                     if(szmsg < 0 || szmsg > MAX_MESSAGE_SIZE){
                         return -1
                     }
                     if(szmsg == 0){
-                        // Heart beat here, ret = 1 means caller should reset alive-check timer
-                        if(this.repbeat) this.send()
-                        ret = 1
+                        if(this.current_param > 0){
+                            this.msglst.push({msg:Buffer.from(''), param:this.current_param})
+                        }else{
+                            // Heart beat here, ret = 1 means caller should reset alive-check timer
+                            if(this.repbeat) this.send()
+                            ret = 1
+                        }
                     }else{
                         this.ridx = (this.ridx + szmsg) % MESSAGE_IDX_TOKEN
                         this.currentData = Buffer.alloc(szmsg)
@@ -70,16 +76,19 @@ export class Protocol{
         return ret
     }
 
-    send(str){
-        const hdr = Buffer.alloc(8)
+    send(str, param){
+        if(param == null) param = 0
+        const hdr = Buffer.alloc(12)
         if(str == null){
             hdr.writeInt32LE(this.widx, 0)
             hdr.writeInt32LE(0, 4)
+            hdr.writeUInt32LE(param, 8)
             this.conn.send(hdr)
         }else{
             const data = Buffer.from(str)
             hdr.writeInt32LE(this.widx, 0)
             hdr.writeInt32LE(data.byteLength, 4)
+            hdr.writeUInt32LE(param, 8)
             this.widx = (this.widx + data.byteLength) % MESSAGE_IDX_TOKEN
             this.conn.send(hdr)
             this.conn.send(data)
@@ -102,6 +111,10 @@ const K_CS_PCL = Symbol()
 const K_CS_DEF_OPT = Symbol()
 const K_CS_TIMEOUT = Symbol()
 const K_CS_TWAIT = Symbol()
+const K_CS_ON_RPC = Symbol()
+
+const K_RPC_MAP = Symbol()
+const K_RPC_ID = Symbol()
 
 /**
  * CS 客户端对象
@@ -126,11 +139,15 @@ export class Client{
         this[K_CS_ON_CON] = ()=>{}
         this[K_CS_ON_CLO] = ()=>{}
         this[K_CS_ON_MSG] = ()=>{}
+        this[K_CS_ON_RPC] = ()=>{}
         this[K_CS_TIMEOUT] = 120
+        this[K_RPC_MAP] = {}
+        this[K_RPC_ID] = 1
         if(cfg){
             if(cfg.on.conn) this[K_CS_ON_CON] = cfg.on.conn
             if(cfg.on.close) this[K_CS_ON_CLO] = cfg.on.close
             if(cfg.on.msg) this[K_CS_ON_MSG] = cfg.on.msg
+            if(cfg.on.rpc) this[K_CS_ON_RPC] = cfg.on.rpc
             if(cfg.url) this[K_CS_DEF_URL] = cfg.url
             if(cfg.options) this[K_CS_DEF_OPT] = cfg.options
             if(cfg.timeout != null) this[K_CS_TIMEOUT] = cfg.timeout
@@ -158,6 +175,12 @@ export class Client{
         return this[K_CS_ON_MSG] = p
     }
 
+    set rpcProc(p){
+        this[K_CS_ON_RPC] = p
+    }
+
+    get status(){ return this[K_CS_PCL] != null}
+
     open(url, opt){
         this.close()
         if(!url) url = this[K_CS_DEF_URL]
@@ -182,11 +205,30 @@ export class Client{
             this[K_CS_CON].terminate()
             this[K_CS_CON] = null
             this[K_CS_ON_CLO](this)
+            for(let i in this[K_RPC_MAP])
+                this[K_RPC_MAP][i].j()
+            this[K_RPC_MAP] = {}
         }
     }
 
     send(msg){
         if(this[K_CS_PCL]) this[K_CS_PCL].send(msg)
+    }
+
+    async rpc(msg){
+        if(this[K_CS_PCL]){
+            return new Promise((function(r,j){
+                while(this[K_RPC_ID] in this[K_RPC_MAP]) this[K_RPC_ID] = (this[K_RPC_ID] + 1) % 0xfffff0
+                this[K_RPC_MAP][this[K_RPC_ID]] = {r:r,j:j}
+                this[K_CS_PCL].send(msg, this[K_RPC_ID] + 1)
+            }).bind(this))
+        }else throw 'Not Connected'
+    }
+
+    endRpc(msg, rpcid){
+        if(this[K_CS_PCL]){
+            this[K_CS_PCL].send(msg, rpcid)
+        }
     }
 
     [K_CS_MSG_PROC](ev){
@@ -195,7 +237,19 @@ export class Client{
             const msgs = this[K_CS_PCL].read()
             for(let m of msgs){
                 try{
-                    this[K_CS_ON_MSG](m, this)
+                    if(m.param == 0){
+                        this[K_CS_ON_MSG](m.msg, this)
+                    }else{
+                        if((m.param & 0x40000000) > 0){
+                            const id = (m.param - 1) & 0xffffff
+                            if(id in this[K_RPC_MAP]){
+                                this[K_RPC_MAP][id].r(m.msg)
+                                delete this[K_RPC_MAP][id]
+                            }
+                        }else{
+                            this[K_CS_ON_RPC](m.msg, m.param | 0x40000000, this)
+                        }
+                    }
                 }catch(e){console.log(e)}
                 if(this[K_CS_PCL] == null) return
             }
@@ -238,12 +292,18 @@ export class Client{
 
 const K_CS_CON_SRV = Symbol()
 const K_CS_CON_WS = Symbol()
+const K_CS_CLI_ADDR = Symbol()
 
 export class Conn{
-    constructor(ws, srv){
+    constructor(ws, clientAddr, srv){
         this[K_CS_CON_WS] = ws
         this[K_CS_CON_SRV] = srv
+        this[K_CS_CLI_ADDR] = clientAddr
+        this[K_RPC_MAP] = {}
+        this[K_RPC_ID] = 1
     }
+
+    get clientAddress(){ return this[K_CS_CLI_ADDR] }
 
     close(){
         this[K_CS_CON_SRV].close(this)
@@ -251,6 +311,14 @@ export class Conn{
 
     send(data){
         this[K_CS_CON_SRV].send(this, data)
+    }
+
+    async rpc(msg){
+        return this[K_CS_CON_SRV].rpc(this, msg);
+    }
+
+    endRpc(msg, rpcid){
+        this[K_CS_CON_SRV].endRpc(this, msg, rpcid)
     }
 }
 
@@ -281,6 +349,7 @@ export class Server{
         this[K_CS_ON_CON] = ()=>{}
         this[K_CS_ON_CLO] = ()=>{}
         this[K_CS_ON_MSG] = ()=>{}
+        this[K_CS_ON_RPC] = ()=>{}
 
         if(c.timeout)
             this[K_CS_TW] = new TimeWheel(2000, c.timeout / 2, this[K_CS_TWP].bind(this));
@@ -290,6 +359,7 @@ export class Server{
                 this.connectionProc = cfg.on.conn
                 this.closeProc = cfg.on.close
                 this.messageProc = cfg.on.msg
+                this.rpcProc = cfg.on.rpc
             }
         }
     }
@@ -308,21 +378,25 @@ export class Server{
      * 连接事件处理方法
      */
     set connectionProc(p){
-        return this[K_CS_ON_CON] = p
+        this[K_CS_ON_CON] = p
     }
 
     /**
      * 关闭事件处理方法
      */
     set closeProc(p){
-        return this[K_CS_ON_CLO] = p
+        this[K_CS_ON_CLO] = p
     }
 
     /**
      * 消息事件处理方法
      */
     set messageProc(p){
-        return this[K_CS_ON_MSG] = p
+        this[K_CS_ON_MSG] = p
+    }
+
+    set rpcProc(p){
+        this[K_CS_ON_RPC] = p
     }
 
     /**
@@ -345,6 +419,9 @@ export class Server{
             try{
                 this[K_CS_ON_CLO](conn.ifc, this)
             }catch(e){console.log(e)}
+            for(let i in conn.ifc[K_RPC_MAP])
+                conn.ifc[K_RPC_MAP][i].j()
+            conn.ifc[K_RPC_MAP] = {}
         }
     }
     
@@ -360,11 +437,27 @@ export class Server{
             if(conn.cs) conn.cs.send(data)
     }
 
+    async rpc(conn, msg){
+        if(conn[K_CS_CON_WS].cs){
+            return new Promise((r,j)=>{
+                while(conn[K_RPC_ID] in conn[K_RPC_MAP]) conn[K_RPC_ID] = (conn[K_RPC_ID] + 1) % 0xfffff0
+                conn[K_RPC_MAP][conn[K_RPC_ID]] = {r:r,j:j}
+                conn[K_CS_CON_WS].cs.send(msg, conn[K_RPC_ID] + 1)
+            })
+        }throw 'Not connect yet'
+    }
+
+    endRpc(conn, msg, rpcid){
+        if(conn[K_CS_CON_WS].cs){
+            conn[K_CS_CON_WS].cs.send(msg, rpcid)
+        }
+    }
+
     [K_CS_ENTRY](req, ws, app){
         ws.cs = new Protocol(ws, true)
         ws.onmessage = this[K_CS_MSG_PROC].bind(this)
         ws.onclose = ws.onerror = this[K_CS_CLO_PROC].bind(this)
-        ws.ifc = new Conn(ws, this)
+        ws.ifc = new Conn(ws, req.clientAddress, this)
         if(this[K_CS_TW]) ws.twid = this[K_CS_TW].join(ws)
         try{
             this[K_CS_ON_CON](ws.ifc, this)
@@ -381,7 +474,19 @@ export class Server{
             const msgs = ev.target.cs.read()
             for(let m of msgs){
                 try{
-                    this[K_CS_ON_MSG](m, ev.target.ifc, this)
+                    if(m.param == 0){
+                        this[K_CS_ON_MSG](m.msg, ev.target.ifc, this)
+                    }else{
+                        if((m.param & 0x40000000) > 0){
+                            const id = (m.param - 1) & 0xffffff
+                            if(id in ev.target.ifc[K_RPC_MAP]){
+                                ev.target.ifc[K_RPC_MAP][id].r(m.msg)
+                                delete ev.target.ifc[K_RPC_MAP][id]
+                            }
+                        }else{
+                            this[K_CS_ON_RPC](m.msg, m.param | 0x40000000, ev.target.ifc, this)
+                        }
+                    }              
                 }catch(e){console.log(e)}
                 if(ev.target.cs == null) return
             }
