@@ -75,7 +75,7 @@ export function parseTS(ts:string):number
  *       process.exit()
  *   }
  */
-export function parseArgv(keys?:any, options?:any, argv?:Array<string>, onerr?:(k:string)=>void):object
+export function parseArgv(keys?:any, options?:any, argv?:Array<string>, onerr?:(k:string)=>void):any
 
 
 export type TimeWhellItem = {}
