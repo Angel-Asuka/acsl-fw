@@ -42,6 +42,7 @@ import cookieParser from 'cookie-parser'
 import {Template} from './template.js'
 import * as httpsys from 'http'
 import * as httpssys from 'https'
+import path from 'node:path';
 
 const K_APP_CONFIG = Symbol()
 const K_APP_ROUTINE = Symbol()
@@ -257,13 +258,16 @@ export class Server{
 
         // 尝试扫描 app 所指目录
         if (cfg.app) {
-            const dl = fs.readdirSync(cfg.root + cfg.app)
-            const ml = []
-            dl.forEach((itm) => {
-                if (itm.substr(itm.length - 3).toLowerCase() == '.js')
-                    ml.push(`${cfg.root}${cfg.app}/${itm}`)
-            });
-            for(let m of ml) await this.load(m)
+            const app_path = cfg.root + cfg.app
+            if(fs.existsSync(app_path)){
+                const dl = fs.readdirSync(app_path)
+                const ml = []
+                dl.forEach((itm) => {
+                    if (itm.substr(itm.length - 3).toLowerCase() == '.js')
+                        ml.push(`${app_path}/${itm}`)
+                });
+                for(let m of ml) await this.load(m)
+            }
         }
 
         this.Template = new Template()
