@@ -42,6 +42,7 @@ import cookieParser from 'cookie-parser'
 import {Template} from './template.js'
 import * as httpsys from 'http'
 import * as httpssys from 'https'
+import path from 'node:path';
 
 const K_APP_CONFIG = Symbol()
 const K_APP_ROUTINE = Symbol()
@@ -257,13 +258,16 @@ export class Server{
 
         // 尝试扫描 app 所指目录
         if (cfg.app) {
-            const dl = fs.readdirSync(cfg.root + cfg.app)
-            const ml = []
-            dl.forEach((itm) => {
-                if (itm.substr(itm.length - 3).toLowerCase() == '.js')
-                    ml.push(`${cfg.root}${cfg.app}/${itm}`)
-            });
-            for(let m of ml) await this.load(m)
+            const app_path = cfg.root + cfg.app
+            if(fs.existsSync(app_path)){
+                const dl = fs.readdirSync(app_path)
+                const ml = []
+                dl.forEach((itm) => {
+                    if (itm.substr(itm.length - 3).toLowerCase() == '.js')
+                        ml.push(`${app_path}/${itm}`)
+                });
+                for(let m of ml) await this.load(m)
+            }
         }
 
         this.Template = new Template()
@@ -362,9 +366,17 @@ export class Server{
         if (this[K_APP_CONFIG].ws){
             expressWs(srv, srv._listener);
             srv.ws('*', async (ws, req)=>{
-                if (req.path in this[K_APP_WSROUTINE])
+                if (req.path in this[K_APP_WSROUTINE]){
+                    let ipstr = req.headers['x-forwarded-for'] || req.headers['X-Real-IP'] || req.ip || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress || ''
+                    const iparr = ipstr.split(',')
+                    if(iparr.length) ipstr = iparr[0]
+                    const ip = REG_IP.exec(ipstr)
+                    if(ip)
+                        req.clientAddress = ip[0]
+                    else
+                        req.clientAddress = ipstr
                     return await this[K_APP_WSROUTINE][req.path].wsproc(req, ws, this);
-                else
+                } else
                     ws.terminate()
             })
         }
