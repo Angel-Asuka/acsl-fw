@@ -1,3 +1,4 @@
+import { App } from '.'
 
 export type Req = {
     get body():object
@@ -121,6 +122,11 @@ export class Server {
       * @param mod 处理方法要绑定的this对象
       */
      WS(path:string, proc:WSProcessor, mod?:object):void
+
+    get modules():any
+    get config():AppConfig
+    get data():any
+    get timestamp():number
 
     registerProcessor(path:string, proc:AppProcessor, mod?:object):void
     load(x:string | AppModule, name?:string):string

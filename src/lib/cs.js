@@ -238,12 +238,16 @@ export class Client{
 
 const K_CS_CON_SRV = Symbol()
 const K_CS_CON_WS = Symbol()
+const K_CS_CLI_ADDR = Symbol()
 
 export class Conn{
-    constructor(ws, srv){
+    constructor(ws, clientAddr, srv){
         this[K_CS_CON_WS] = ws
         this[K_CS_CON_SRV] = srv
+        this[K_CS_CLI_ADDR] = clientAddr
     }
+
+    get clientAddress(){ return this[K_CS_CLI_ADDR] }
 
     close(){
         this[K_CS_CON_SRV].close(this)
@@ -364,7 +368,7 @@ export class Server{
         ws.cs = new Protocol(ws, true)
         ws.onmessage = this[K_CS_MSG_PROC].bind(this)
         ws.onclose = ws.onerror = this[K_CS_CLO_PROC].bind(this)
-        ws.ifc = new Conn(ws, this)
+        ws.ifc = new Conn(ws, req.clientAddress, this)
         if(this[K_CS_TW]) ws.twid = this[K_CS_TW].join(ws)
         try{
             this[K_CS_ON_CON](ws.ifc, this)

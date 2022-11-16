@@ -362,9 +362,17 @@ export class Server{
         if (this[K_APP_CONFIG].ws){
             expressWs(srv, srv._listener);
             srv.ws('*', async (ws, req)=>{
-                if (req.path in this[K_APP_WSROUTINE])
+                if (req.path in this[K_APP_WSROUTINE]){
+                    let ipstr = req.headers['x-forwarded-for'] || req.headers['X-Real-IP'] || req.ip || req.connection.remoteAddress || req.socket.remoteAddress || req.connection.socket.remoteAddress || ''
+                    const iparr = ipstr.split(',')
+                    if(iparr.length) ipstr = iparr[0]
+                    const ip = REG_IP.exec(ipstr)
+                    if(ip)
+                        req.clientAddress = ip[0]
+                    else
+                        req.clientAddress = ipstr
                     return await this[K_APP_WSROUTINE][req.path].wsproc(req, ws, this);
-                else
+                } else
                     ws.terminate()
             })
         }

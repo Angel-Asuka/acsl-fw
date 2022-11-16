@@ -22,6 +22,7 @@ type ClientMessageProc = (msg:Buffer, cli:Client) => void
 export type Conn = {
     send(msg:Buffer):void
     close():void
+    get clientAddress():string
     [key:string]:any
 }
 
