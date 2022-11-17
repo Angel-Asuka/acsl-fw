@@ -1,27 +1,4 @@
-import WebSocket from 'ws'
-import {TimeWheel, syncObject} from './utils.js'
-
-const K_CS_ENTRY = Symbol()
-const K_CS_TW = Symbol()
-const K_CS_TWP = Symbol()
-const K_CS_ON_CON = Symbol()
-const K_CS_ON_CLO = Symbol()
-const K_CS_ON_MSG = Symbol()
-const K_CS_ON_RPC = Symbol()
-const K_CS_MSG_PROC = Symbol()
-const K_CS_CLO_PROC = Symbol()
-const K_RPC_MAP = Symbol()
-const K_RPC_ID = Symbol()
-const K_CS_CON_SRV = Symbol()
-const K_CS_CON_WS = Symbol()
-const K_CS_CLI_ADDR = Symbol()
-const K_CS_TWP2 = Symbol()
-const K_CS_DEF_URL = Symbol()
-const K_CS_CON = Symbol()
-const K_CS_PCL = Symbol()
-const K_CS_DEF_OPT = Symbol()
-const K_CS_TIMEOUT = Symbol()
-const K_CS_TWAIT = Symbol()
+import {Buffer} from './buffer.js'
 
 const MAX_MESSAGE_SIZE = 65536
 const MESSAGE_IDX_BEGIN = 7135
@@ -32,7 +9,7 @@ export class Protocol{
     conn : any
     ridx : number
     widx : number
-    headerBuf : any
+    headerBuf : Buffer
     currentData : any
     header_size : number
     data_size : number
@@ -53,9 +30,9 @@ export class Protocol{
         this.msglst = []
     }
 
-    write(data:any){
+    async write(data:any){
         let ret = 0
-        if(data.byteLength == null) data = Buffer.from(data)
+        if(data.byteLength == null) data = await Buffer.from(data)
         let i = 0
         while(i < data.byteLength){
             const l = data.byteLength - i
@@ -110,25 +87,43 @@ export class Protocol{
         return ret
     }
 
-    send(str?:any, param?:number){
+    async send(str?:any, param?:number){
         if(param == null) param = 0
         const hdr = Buffer.alloc(12)
         if(str == null){
             hdr.writeInt32LE(this.widx, 0)
             hdr.writeInt32LE(0, 4)
             hdr.writeUInt32LE(param, 8)
-            this.conn.send(hdr)
+            this.conn.send(hdr.buf)
         }else{
-            const data = Buffer.from(str)
+            const data = await Buffer.from(str)
             hdr.writeInt32LE(this.widx, 0)
             hdr.writeInt32LE(data.byteLength, 4)
             hdr.writeUInt32LE(param, 8)
             this.widx = (this.widx + data.byteLength) % MESSAGE_IDX_TOKEN
-            this.conn.send(hdr)
-            this.conn.send(data)
+            this.conn.send(hdr.buf)
+            this.conn.send(data.buf)
         }
     }
 }
+
+const K_RPC_MAP = Symbol()
+const K_RPC_ID = Symbol()
+const K_CS_TW = Symbol()
+const K_CS_TWP = Symbol()
+const K_CS_TWP2 = Symbol()
+const K_CS_DEF_URL = Symbol()
+const K_CS_CON = Symbol()
+const K_CS_PCL = Symbol()
+const K_CS_DEF_OPT = Symbol()
+const K_CS_TIMEOUT = Symbol()
+const K_CS_TWAIT = Symbol()
+const K_CS_ON_CON = Symbol()
+const K_CS_ON_CLO = Symbol()
+const K_CS_ON_MSG = Symbol()
+const K_CS_ON_RPC = Symbol()
+const K_CS_MSG_PROC = Symbol()
+const K_CS_CLO_PROC = Symbol()
 
 /**
  * 客户端连接事件处理方法
@@ -147,7 +142,7 @@ type ClientCloseProc = (cli:Client) => void
   * @param data 消息数据
   * @param cli 相关的连接对象
   */
-type ClientMessageProc = (msg:any, cli:Client) => void
+type ClientMessageProc = (msg:Buffer, cli:Client) => void
 
 /**
  * 客户端远程过程调用事件处理方法
@@ -155,7 +150,7 @@ type ClientMessageProc = (msg:any, cli:Client) => void
  * @param rpcid 调用ID
  * @param cli 相关的连接对象
  */
-type ClientRpcProc = (msg:any, rpcid:number, cli:Client) => void
+type ClientRpcProc = (msg:Buffer, rpcid:number, cli:Client) => void
 
 type ClientConfig = {
     url?:string,
@@ -340,8 +335,8 @@ type ClientConfig = {
     }
 
     /** @internal */
-    [K_CS_MSG_PROC](ev:any){
-        const ret = this[K_CS_PCL].write(ev.data)
+    async [K_CS_MSG_PROC](ev:any){
+        const ret = await this[K_CS_PCL].write(ev.data)
         if(ret >= 0){
             const msgs = this[K_CS_PCL].read()
             for(let m of msgs){
@@ -399,291 +394,5 @@ type ClientConfig = {
         }else{
             this.close()
         }
-    }
-}
-
-export class Conn{
-    [K_CS_CON_WS] : any
-    [K_CS_CON_SRV] : Server
-    [K_CS_CLI_ADDR] : string
-    [K_RPC_MAP] : any
-    [K_RPC_ID] : number
-
-    [key:string]:any
-
-    /** @internal */
-    constructor(ws:any, clientAddr:string, srv:Server){
-        this[K_CS_CON_WS] = ws
-        this[K_CS_CON_SRV] = srv
-        this[K_CS_CLI_ADDR] = clientAddr
-        this[K_RPC_MAP] = {}
-        this[K_RPC_ID] = 1
-    }
-
-    get clientAddress(){ return this[K_CS_CLI_ADDR] }
-
-    close(){
-        this[K_CS_CON_SRV].close(this)
-    }
-
-    send(data:any){
-        this[K_CS_CON_SRV].send(this, data)
-    }
-
-    async rpc(msg:any):Promise<any>{
-        return this[K_CS_CON_SRV].rpc(this, msg);
-    }
-
-    endRpc(msg:any, rpcid:number):void{
-        this[K_CS_CON_SRV].endRpc(this, msg, rpcid)
-    }
-}
-
-/**
- * 连接事件处理方法
- * @param conn 新连上的连接对象
- * @param srv 服务对象
- */
- type ConnectionProc = (conn:Conn, srv:Server) => void
-
- /**
-  * 关闭事件处理方法
-  * @param conn 被关闭的连接对象
-  * @param srv 服务对象
-  */
- type CloseProc = (conn:Conn, srv:Server) => void
- 
- /**
-  * 消息事件处理方法
-  * @param msg 消息
-  * @param conn 相关的连接对象
-  * @param srv 服务对象
-  */
- type MessageProc = (msg:Buffer, conn:Conn, srv:Server) => void
- 
- /**
-  * 客户端远程过程调用事件处理方法
-  * @param data 消息数据
-  * @param rpcid 调用ID
-  * @param cli 相关的连接对象
-  */
-  type RpcProc = (msg:Buffer, rpcid:number, conn:Conn, srv:Server) => void
-
-declare type ServerConfig = {
-    app:any,
-    path:string,
-    timeout?: number,
-    on?:{
-        conn?:ConnectionProc
-        close?:CloseProc
-        msg?:MessageProc
-        rpc?:RpcProc
-    }
-}
-
-/**
- * CS 服务端对象
- */
-export class Server{
-
-    /** @internal */ [K_CS_ON_CON] : ConnectionProc
-    /** @internal */ [K_CS_ON_CLO] : CloseProc
-    /** @internal */ [K_CS_ON_MSG] : MessageProc
-    /** @internal */ [K_CS_ON_RPC] : RpcProc
-    /** @internal */ [K_CS_TW] : any
-
-    [key:string]:any
-
-    /**
-     * 构造一个服务端对象
-     * @param {object} cfg 配置信息
-     * @example
-     * const cfg = {
-     *      app: app,                   // App对象
-     *      path: '/ws',                // 监听路径
-     *      timeout: 0,                 // 连接超时时间，秒（0=不检测超时）
-     *      on: {                       // 事件处理方法
-     *          conn:(conn, srv){}          // 连接事件
-     *          close:(conn, srv){}         // 断开（关闭）事件
-     *          msg:(msg, conn, srv){}      // 消息事件
-     *      }
-     *  }
-     */
-    constructor(cfg: ServerConfig){
-        const c = {
-            timeout: 120,
-        }
-        syncObject(c, cfg)
-        this[K_CS_ON_CON] = ()=>{}
-        this[K_CS_ON_CLO] = ()=>{}
-        this[K_CS_ON_MSG] = ()=>{}
-        this[K_CS_ON_RPC] = ()=>{}
-
-        if(c.timeout)
-            this[K_CS_TW] = new TimeWheel(2000, c.timeout / 2, this[K_CS_TWP].bind(this));
-        if(cfg){
-            if(cfg.app && cfg.path) this.bind(cfg.app, cfg.path)
-            if(cfg.on){
-                if(cfg.on.conn) this.connectionProc = cfg.on.conn
-                if(cfg.on.close) this.closeProc = cfg.on.close
-                if(cfg.on.msg) this.messageProc = cfg.on.msg
-                if(cfg.on.rpc) this.rpcProc = cfg.on.rpc
-            }
-        }
-    }
-
-    /**
-     * 绑定到 App 对象
-     * @param {App.Server} app app对象
-     * @param {string} path 监听路径
-     */
-     bind(app:any, path:string):void{
-        app.WS(path, this[K_CS_ENTRY], this)
-        if(this[K_CS_TW]) this[K_CS_TW].start()
-    }
-
-    /**
-     * 连接事件处理方法
-     */
-     set connectionProc(p:ConnectionProc){
-        this[K_CS_ON_CON] = p
-    }
-
-    /**
-     * 关闭事件处理方法
-     */
-    set closeProc(p:CloseProc){
-        this[K_CS_ON_CLO] = p
-    }
-
-    /**
-     * 消息事件处理方法
-     */
-    set messageProc(p:MessageProc){
-        this[K_CS_ON_MSG] = p
-    }
-
-    set rpcProc(p:RpcProc){
-        this[K_CS_ON_RPC] = p
-    }
-
-    /**
-     * 关闭连接
-     * @param {object} conn 连接对象
-     */
-    close(conn:any):void{
-        if(conn[K_CS_CON_WS])
-            this.close(conn[K_CS_CON_WS])
-        else{
-            conn.onmessage = null
-            conn.onclose = null
-            conn.onerror = null
-            if(this[K_CS_TW] && conn.twid){
-                this[K_CS_TW].remove(conn.twid)
-                conn.twid = null
-            }
-            conn.cs = null
-            conn.terminate()
-            try{
-                this[K_CS_ON_CLO](conn.ifc, this)
-            }catch(e){console.log(e)}
-            for(let i in conn.ifc[K_RPC_MAP])
-                conn.ifc[K_RPC_MAP][i].j()
-            conn.ifc[K_RPC_MAP] = {}
-        }
-    }
-    
-    /**
-     * 发送数据
-     * @param {object} conn 连接对象
-     * @param {any} data 要发送的数据
-     */
-     send(conn:any, data:any):void{
-        if(conn[K_CS_CON_WS])
-            this.send(conn[K_CS_CON_WS], data)
-        else
-            if(conn.cs) conn.cs.send(data)
-    }
-
-    /**
-     * 发起远程过程调用
-     * @param conn 连接对象
-     * @param msg 请求消息
-     */
-    rpc(conn:Conn, msg:any):Promise<any>{
-        if(conn[K_CS_CON_WS].cs){
-            return new Promise((r,j)=>{
-                while(conn[K_RPC_ID] in conn[K_RPC_MAP]) conn[K_RPC_ID] = (conn[K_RPC_ID] + 1) % 0xfffff0
-                conn[K_RPC_MAP][conn[K_RPC_ID]] = {r:r,j:j}
-                conn[K_CS_CON_WS].cs.send(msg, conn[K_RPC_ID] + 1)
-            })
-        }throw 'Not connect yet'
-    }
-
-    /**
-      * 响应远程过程调用
-      * @param conn 连接对象
-      * @param msg 返回消息
-      * @param rpcid 调用ID
-      */
-    endRpc(conn:Conn, msg:any, rpcid:number):void{
-        if(conn[K_CS_CON_WS].cs){
-            conn[K_CS_CON_WS].cs.send(msg, rpcid)
-        }
-    }
-
-    /** @internal */
-    [K_CS_ENTRY](req:any, ws:any, app:any){
-        ws.cs = new Protocol(ws, true)
-        ws.onmessage = this[K_CS_MSG_PROC].bind(this)
-        ws.onclose = ws.onerror = this[K_CS_CLO_PROC].bind(this)
-        ws.ifc = new Conn(ws, req.clientAddress, this)
-        if(this[K_CS_TW]) ws.twid = this[K_CS_TW].join(ws)
-        try{
-            this[K_CS_ON_CON](ws.ifc, this)
-        }catch(e){console.log(e)}
-    }
-
-    /** @internal */
-    [K_CS_TWP](idx:any, obj:any, wh:any){
-        this.close(obj)
-    }
-
-    /** @internal */
-    [K_CS_MSG_PROC](ev:any){
-        const ret = ev.target.cs.write(ev.data)
-        if(ret >= 0){
-            const msgs = ev.target.cs.read()
-            for(let m of msgs){
-                try{
-                    if(m.param == 0){
-                        this[K_CS_ON_MSG](m.msg, ev.target.ifc, this)
-                    }else{
-                        if((m.param & 0x40000000) > 0){
-                            const id = (m.param - 1) & 0xffffff
-                            if(id in ev.target.ifc[K_RPC_MAP]){
-                                ev.target.ifc[K_RPC_MAP][id].r(m.msg)
-                                delete ev.target.ifc[K_RPC_MAP][id]
-                            }
-                        }else{
-                            this[K_CS_ON_RPC](m.msg, m.param | 0x40000000, ev.target.ifc, this)
-                        }
-                    }              
-                }catch(e){console.log(e)}
-                if(ev.target.cs == null) return
-            }
-            if(ret == 1){
-                if(this[K_CS_TW]){
-                    this[K_CS_TW].remove(ev.target.twid)
-                    ev.target.twid = this[K_CS_TW].join(ev.target)
-                }
-            }
-        }else
-            this.close(ev.target)
-    }
-
-    /** @internal */
-    [K_CS_CLO_PROC](ev:any){
-        this.close(ev.target)
     }
 }

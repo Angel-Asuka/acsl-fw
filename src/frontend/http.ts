@@ -68,9 +68,8 @@ export async function post(url:string, data?:any, headers?:any, exdata?:boolean)
     return Http.post(url, data, headers, exdata)
 }
 
-/*
-export async function Connect(url:string, options?:WebSocket.ClientOptions):Promise<WebSocket>{
-    const ws = new WebSocket(url, options)
+export async function Connect(url:string, options?:any):Promise<WebSocket>{
+    const ws = new WebSocket(url)
     return new Promise((resolve, reject) => {
         const timer = setInterval(() => {
             if(ws.readyState === 1) {
@@ -79,4 +78,4 @@ export async function Connect(url:string, options?:WebSocket.ClientOptions):Prom
             }
         }, 10);
     });
-}*/
+}

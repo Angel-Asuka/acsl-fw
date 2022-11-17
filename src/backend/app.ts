@@ -218,7 +218,7 @@ export class Server{
                 cfg: proc
             }
             if(procObj.wsproc){
-                this[K_APP_WSROUTINE][full_path+'/.websocket'] = procObj
+                this[K_APP_WSROUTINE][((full_path=='/')?'':full_path)+'/.websocket'] = procObj
                 this[K_APP_HAS_WS] = true
             }
             if(procObj.proc)
