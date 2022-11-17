@@ -1,47 +1,53 @@
-/**
- * MySQL 数据库模块
- */
-
 import * as MySQL_Driver from 'mysql'
 
 const K_TRANSACTION_CONN = Symbol()
+
+declare type QueryResult = {
+    ok: boolean,
+    result: any
+}
 
 class DBBase {
     constructor(){}
     
     CURRENT_TIMESTAMP(){ return 'CURRENT_TIMESTAMP' }
 
-    async fetch(sql, param){
+    async query(sql_str:string, params:any): Promise<QueryResult>{
+        return new Promise((resolve, reject) => {resolve({ok:false, result:'NOT_IMP'})})
+    }
+
+    async fetch(sql:string, param:any){
         const ret = await this.query(sql, param)
         if(ret.ok) return ret.result
         console.log(ret)
         return null
     }
 
-    async fetchone(sql, param){
+    async fetchone(sql:string, param:any){
         const ret = await this.query(sql, param)
         if(ret.ok && ret.result.length) return ret.result[0]
         if(!ret.ok) console.log(ret)
         return null
     }
 
-    async exec(sql, param){
+    async exec(sql:string, param:any){
         const ret = await this.query(sql, param)
         if(!ret.ok) console.log(ret)
         return ret.ok
     }
 
-    async insert(table, values){
-        const keys = [];
-        const vals = [];
-        const data = [];
+    async insert(table:string, values:{[k:string]:string|(()=>string)}){
+        const keys = [] as string[];
+        const vals = [] as string[];
+        const data = [] as string[];
         for (let k in values){
             keys.push(k);
-            if(typeof(values[k]) == 'function')
-                vals.push(values[k]())
+            const val = values[k]
+            if(typeof val === 'function')
+                vals.push(val())
             else {
                 vals.push('?')
-                data.push(values[k])
+                data.push(val)
             }
         }
         const sql_str = `INSERT INTO \`${table}\` (\`${keys.join('`,`')}\`)VALUES(${vals.join(',')})`
@@ -51,15 +57,16 @@ class DBBase {
         return null
     }
 
-    async update(table, values, where, condv){
-        const vals = [];
-        let data = [];
+    async update(table:string, values:{[k:string]:string|(()=>string)}, where: string, condv: string){
+        const vals = [] as string[];
+        let data = [] as string[];
         for (let k in values){
-            if(typeof(values[k]) == 'function')
-                vals.push(`\`${k}\`=${values[k]()}`)
+            const val = values[k]
+            if(typeof(val) == 'function')
+                vals.push(`\`${k}\`=${val()}`)
             else {
                 vals.push(`\`${k}\`=?`)
-                data.push(values[k])
+                data.push(val)
             }
         }
         if(where){
@@ -75,12 +82,14 @@ class DBBase {
 }
 
 class Transaction extends DBBase {
-    constructor(conn){
+    /** @internal */ [K_TRANSACTION_CONN]:MySQL_Driver.PoolConnection
+
+    constructor(conn:MySQL_Driver.PoolConnection){
         super()
         this[K_TRANSACTION_CONN] = conn
     }
 
-    async query(sql_str, params){
+    async query(sql_str:string, params:any): Promise<QueryResult>{
         return new Promise((resolve, reject) => {
             this[K_TRANSACTION_CONN].query(sql_str, params, function (err, result) {
                 if (err)
@@ -91,8 +100,7 @@ class Transaction extends DBBase {
         })
     }
 
-
-    async commit(){
+    async commit():Promise<boolean> {
         return new Promise(resolve => {
             this[K_TRANSACTION_CONN].commit(err => {
                 if (err){
@@ -108,7 +116,7 @@ class Transaction extends DBBase {
         })
     }
 
-    async rollback(){
+    async rollback():Promise<boolean> {
         return new Promise(resolve => {
             this[K_TRANSACTION_CONN].rollback(()=>{
                 this[K_TRANSACTION_CONN].release()
@@ -118,10 +126,13 @@ class Transaction extends DBBase {
     }
 }
 
+declare type DBConfig = MySQL_Driver.PoolConfig
+
 /**
  * class DB
  */
-class DB extends DBBase {
+export class DB extends DBBase {
+    /** @internal */ pool:MySQL_Driver.Pool
     /**
      * 构造一个 DB 对象
      * @param {Object} cfg 
@@ -134,16 +145,16 @@ class DB extends DBBase {
      *     database: "db"           // 数据库名
      * }
      */
-    constructor(cfg) {
+    constructor(cfg:DBConfig) {
         super()
         if (!cfg.connectionLimit)
             cfg.connectionLimit = 10
         this.pool = MySQL_Driver.createPool(cfg)
     }
 
-    async connection() {
+    async connection():Promise<MySQL_Driver.PoolConnection|null> {
         return new Promise((resolve, reject) => {
-            this.pool.getConnection((err, conn) => {
+            this.pool.getConnection((err:MySQL_Driver.MysqlError, conn:MySQL_Driver.PoolConnection) => {
                 if (err){
                     console.log(err)
                     resolve(null)
@@ -153,8 +164,9 @@ class DB extends DBBase {
         });
     }
 
-    async query(sql_str, params){
+    async query(sql_str:string, params:any):Promise<QueryResult>{
         const conn = await this.connection()
+        if(conn == null) return {ok: false, result: 'NOT_CON'}
         return new Promise((resolve, reject) => {
             conn.query(sql_str, params, function (err, result) {
                 conn.release()
@@ -166,7 +178,7 @@ class DB extends DBBase {
         })
     }
 
-    async begin(){
+    async begin():Promise<Transaction|null>{
         const conn = await this.connection()
         if (!conn) return null
         return new Promise(resolve => {
@@ -180,8 +192,9 @@ class DB extends DBBase {
         })
     }
 
-    async do(func){
+    async do(func:(tr:Transaction)=>boolean):Promise<boolean>{
         const trans = await this.begin()
+        if(!trans) return false
         if(await func(trans))
             return await trans.commit()
         else{
@@ -190,5 +203,3 @@ class DB extends DBBase {
         }
     }
 }
-
-export {DB}

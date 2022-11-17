@@ -10,16 +10,30 @@ const K_TIMEWHEEL_WRAPPER_BID = Symbol()
 const K_TIMEWHEEL_WRAPPER_AID = Symbol()
 const K_TIMEWHEEL_WRAPPER_OBJ = Symbol()
 
+declare type TimeWhellItem = {
+    /** @internal */ [K_TIMEWHEEL_WRAPPER_BID]: number,
+    /** @internal */ [K_TIMEWHEEL_WRAPPER_AID]: number,
+    /** @internal */ [K_TIMEWHEEL_WRAPPER_OBJ]: any
+}
+declare type TimeWheelCallBack = (idx:TimeWhellItem, obj:any, wheel:TimeWheel)=>void
+
 /**
  * 时间轮
  */
 export class TimeWheel{
+    /** @internal */ [K_TIMEWHEEL_POINTER]:number
+    /** @internal */ [K_TIMEWHEEL_UNIT]:number
+    /** @internal */ [K_TIMEWHEEL_CB]:TimeWheelCallBack
+    /** @internal */ [K_TIMEWHEEL_WHEEL]:Array<Array<TimeWhellItem>>
+    /** @internal */ [K_TIMEWHEEL_UDATA]:any
+    /** @internal */ [K_TIMEWHEEL_ID]:any
+
     /**
      * 构造一个时间轮
-     * @param {number} unit 单位事件长度（毫秒）
-     * @param {number} size 时间轮长度
-     * @param {function} cb 回调函数
-     * @param {any} udata 用户数据
+     * @param unit 单位事件长度（毫秒）
+     * @param size 时间轮长度
+     * @param cb 回调函数
+     * @param udata 用户数据
      * @example
      * 下面的代码中：
      *      idx = 对象在时间轮中的ID
@@ -30,7 +44,7 @@ export class TimeWheel{
      *      ...
      * },null)
      */
-    constructor(unit, size, cb, udata){
+    constructor(unit:number, size:number, cb:TimeWheelCallBack, udata?:any){
         this[K_TIMEWHEEL_WHEEL] = []
         this[K_TIMEWHEEL_POINTER] = 0
         this[K_TIMEWHEEL_UNIT] = unit
@@ -43,7 +57,7 @@ export class TimeWheel{
     /**
      * 启动时间轮
      */
-    start(){
+    start():void{
         this.stop()
         this[K_TIMEWHEEL_ID] = setInterval(this[K_TIMEWHEEL_PROC].bind(this), this[K_TIMEWHEEL_UNIT])
     }
@@ -51,7 +65,7 @@ export class TimeWheel{
     /**
      * 停止时间轮
      */
-    stop(){
+    stop():void{
         if(this[K_TIMEWHEEL_ID] != null){
             clearInterval(this[K_TIMEWHEEL_ID])
             this[K_TIMEWHEEL_ID] = null
@@ -60,11 +74,11 @@ export class TimeWheel{
 
     /**
      * 将对象插入时间轮
-     * @param {any} obj 对象
-     * @param {number} toffset 时间偏移，默认为 -1
+     * @param obj 对象
+     * @param toffset 时间偏移，默认为 -1
      * @returns 对象在时间轮中的ID
      */
-    join(obj, toffset){
+    join(obj:any, toffset?:number):TimeWhellItem{
         if(toffset == null) toffset = -1
         const bid = (this[K_TIMEWHEEL_POINTER] + this[K_TIMEWHEEL_WHEEL].length + toffset) % this[K_TIMEWHEEL_WHEEL].length
         const aid = this[K_TIMEWHEEL_WHEEL][bid].length
@@ -79,9 +93,9 @@ export class TimeWheel{
     
     /**
      * 从时间轮中删除一个对象
-     * @param {object} o 对象在时间轮中的ID
+     * @param o 对象在时间轮中的ID
      */
-    remove(o){
+    remove(o:TimeWhellItem):void{
         const bid = o[K_TIMEWHEEL_WRAPPER_BID]
         const aid = o[K_TIMEWHEEL_WRAPPER_AID]
         if(bid >= 0 && aid >= 0 && this[K_TIMEWHEEL_WHEEL][bid].length > 0){
@@ -102,7 +116,7 @@ export class TimeWheel{
     /**
      * 用户数据
      */
-    set data(d){ return this[K_TIMEWHEEL_UDATA] = d }
+    set data(d){ this[K_TIMEWHEEL_UDATA] = d }
 
     [K_TIMEWHEEL_PROC](){
         const objs = Array.from(this[K_TIMEWHEEL_WHEEL][this[K_TIMEWHEEL_POINTER]])
