@@ -1,0 +1,11 @@
+{
+    "extends": "./tsconfig.base.json",
+    "compilerOptions": {
+        "outDir": "./dist",
+        "removeComments": true,
+        "sourceMap": false,
+        "declaration": true
+    },
+    "include": ["./src"],
+    "exclude": ["./old"]
+}

@@ -1,24 +1,24 @@
-'use strict'
+import fs from 'node:fs'
 
-/**
- * langley service framework
- * class Template
- * cfg = {
- *      root : '模板文件目录',
- *      begin_mark : '【可选】模板脚本起始标记，默认为<!--{',
- *      end_mark : '【可选】模板脚本结束标记，默认为}-->'
- * }
- * 
- */
-
-import * as fs from 'fs'
 const K_TEMPLATE_ROOT = Symbol()
 const K_TEMPLATE_CACHE = Symbol()
 const K_TEMPLATE_BEGIN_MARK = Symbol()
 const K_TEMPLATE_END_MARK = Symbol()
 
-function compile(name, lupd, str, bm, em){
-    let res = []
+export type TemplateConfig = {
+    root?: string,
+    begin_mark?: string,
+    end_mark?: string
+}
+
+declare type TemplateCacheObject = {
+    res : Array<string>,
+    func : (res:Array<string>, data:any, incfunc:(fn:string, data:any)=>string)=>string,
+    lastUpdate : number
+}
+
+function compile(name:string, lupd:number, str:string, bm:string, em:string){
+    let res = [] as Array<string>
     let src = 'let ___output = ""; const print=function(){for(let v of arguments) ___output += v;}\nconst include=function(p,d){print(___inc___(p,d));}\n'
     let s = str
 
@@ -35,10 +35,10 @@ function compile(name, lupd, str, bm, em){
         if(p0){
             // 脚本前面还有文本，先输出文本
             src += `print(res[${res.length}]);\n`
-            res.push(s.substr(0, p0))
+            res.push(s.substring(0, p0))
         }
         // 转到脚本起始位置
-        s = s.substr(p0 + bm.length)
+        s = s.substring(p0 + bm.length)
         // 查找脚本结束标记
         const p1 = s.search(em)
         if(p1 == -1){
@@ -47,16 +47,16 @@ function compile(name, lupd, str, bm, em){
             return null
         }
 
-        let subscript = s.substr(0, p1);
+        let subscript = s.substring(0, p1);
         if(subscript[0] == '=')
-            subscript = 'print(' + subscript.substr(1) + ')'
+            subscript = 'print(' + subscript.substring(1) + ')'
 
         // 合并当前脚本
         src += subscript
         src += '\n'
 
         // 移动指针
-        s = s.substr(p1 + em.length)
+        s = s.substring(p1 + em.length)
 
     }
 
@@ -66,18 +66,24 @@ function compile(name, lupd, str, bm, em){
         res : res,
         func : new Function('res', 'data', '___inc___', src),
         lastUpdate : lupd
-    }
+    } as TemplateCacheObject
 }
 
-class Template{
-    constructor(cfg) {
+export class Template{
+    /** @internal */ private [K_TEMPLATE_CACHE]: {[key:string]:TemplateCacheObject}
+    /** @internal */ private [K_TEMPLATE_BEGIN_MARK]: string
+    /** @internal */ private [K_TEMPLATE_END_MARK]: string
+    /** @internal */ private [K_TEMPLATE_ROOT]: string
+
+    constructor(cfg?:TemplateConfig) {
         this[K_TEMPLATE_CACHE] = {}
         this[K_TEMPLATE_BEGIN_MARK] = '<!--{'
         this[K_TEMPLATE_END_MARK] = '}-->'
+        this[K_TEMPLATE_ROOT] = ""
         if(cfg) this.set(cfg)
     }
 
-    set(cfg, root){
+    set(cfg:TemplateConfig, root?:string){
         // CFG - 模板目录
         if(cfg.root){
             this[K_TEMPLATE_ROOT] = (root || '') + cfg.root
@@ -89,13 +95,15 @@ class Template{
         if(cfg.end_mark) this[K_TEMPLATE_END_MARK] = cfg.end_mark
     }
 
-    makeCache(fn) {
+    makeCache(fn:string) {
         try{
             const fpath = this[K_TEMPLATE_ROOT] + fn;
             const fstat = fs.statSync(fpath)
             const fcontent = fs.readFileSync(fpath, 'utf-8')
             if(!(fn in this[K_TEMPLATE_CACHE]) || this[K_TEMPLATE_CACHE][fn].lastUpdate < fstat.mtimeMs){
-                this[K_TEMPLATE_CACHE][fn] = compile(fn, fstat.mtimeMs, fcontent, this[K_TEMPLATE_BEGIN_MARK], this[K_TEMPLATE_END_MARK])
+                const tpl = compile(fn, fstat.mtimeMs, fcontent, this[K_TEMPLATE_BEGIN_MARK], this[K_TEMPLATE_END_MARK])
+                if(!tpl) return false;
+                this[K_TEMPLATE_CACHE][fn] = tpl
             }
             return true
         }catch(e){
@@ -104,7 +112,7 @@ class Template{
         }
     }
 
-    render(fn, data) {
+    render(fn:string, data:any):string {
         if(this.makeCache(fn)){
             const proc = this[K_TEMPLATE_CACHE][fn]
             return proc.func(proc.res, data, this.render.bind(this))
@@ -113,5 +121,3 @@ class Template{
     }
     
 }
-
-export {Template}
