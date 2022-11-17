@@ -1,5 +1,3 @@
-import { App } from '.'
-
 export type Req = {
     get body():object
     get query():object
