@@ -4,14 +4,7 @@
     "type": "module",
     "description": "AW Service Framework",
     "exports": {
-        ".": "./lib/index.js",
-        "./utils": "./lib/utils.js",
-        "./db": "./lib/db.js",
-        "./mdb": "./lib/mdb.js",
-        "./http": "./lib/http.js",
-        "./template": "./lib/template.js",
-        "./crypto": "./lib/crypto.js",
-        "./cs": "./lib/cs.js"
+        ".": "./index.js"
     },
     "scripts": {},
     "author": "AngelAsuka",
