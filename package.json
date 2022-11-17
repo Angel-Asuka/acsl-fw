@@ -4,7 +4,8 @@
     "type": "module",
     "description": "AW Service Framework",
     "exports": {
-        ".": "./index.js"
+        ".": "./index.js",
+        "./web": "./web.js"
     },
     "scripts": {},
     "author": "AngelAsuka",

@@ -1,7 +1,7 @@
 import axios from 'axios'
 import WebSocket from 'ws'
 
-export async function Get(url:string, param?:any, headers?:any, exdata?:boolean):Promise<any> {
+export async function get(url:string, param?:any, headers?:any, exdata?:boolean):Promise<any> {
     return new Promise((resolve)=>{
         axios.get(url, {params:param, headers:headers}).then(response => {
             resolve(exdata?response:response.data)
@@ -12,7 +12,7 @@ export async function Get(url:string, param?:any, headers?:any, exdata?:boolean)
     });
 }
 
-export async function Post(url:string, data?:any, headers?:any, exdata?:boolean):Promise<any> {
+export async function post(url:string, data?:any, headers?:any, exdata?:boolean):Promise<any> {
     return new Promise((resolve)=>{
         axios.post(url, data, {headers:headers}).then(response => {
             resolve(exdata?response:response.data)
@@ -23,7 +23,7 @@ export async function Post(url:string, data?:any, headers?:any, exdata?:boolean)
     });
 }
 
-export async function Connect(url:string, options?:WebSocket.ClientOptions):Promise<WebSocket>{
+export async function connect(url:string, options?:WebSocket.ClientOptions):Promise<WebSocket>{
     const ws = new WebSocket(url, options)
     return new Promise((resolve, reject) => {
         const timer = setInterval(() => {
