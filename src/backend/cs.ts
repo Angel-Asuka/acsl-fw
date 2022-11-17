@@ -217,6 +217,8 @@ export class Client{
     /** @internal */ [K_CS_CON] : WebSocket | null
     /** @internal */ [K_CS_TW] : any
 
+    [key:string]:any
+    
     /**
      * 构造一个客户端对象
      * @param {object} cfg 配置信息
@@ -437,6 +439,8 @@ export class Conn{
     [K_RPC_MAP] : any
     [K_RPC_ID] : number
 
+    [key:string]:any
+
     /** @internal */
     constructor(ws:any, clientAddr:string, srv:Server){
         this[K_CS_CON_WS] = ws
@@ -487,6 +491,8 @@ export class Server{
     /** @internal */ [K_CS_ON_MSG] : MessageProc
     /** @internal */ [K_CS_ON_RPC] : RpcProc
     /** @internal */ [K_CS_TW] : any
+
+    [key:string]:any
 
     /**
      * 构造一个服务端对象
