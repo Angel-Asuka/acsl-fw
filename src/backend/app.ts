@@ -26,9 +26,9 @@ const K_APP_HAS_WS = Symbol()
 const REG_IP = /\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/
 
 export type Req = {
-    get body():object
-    get query():object
-    get headers():object
+    get body():any
+    get query():any
+    get headers():any
     [key:string]:any
 }
 
