@@ -1,6 +1,28 @@
 import WebSocket from 'ws'
 import {TimeWheel, syncObject} from './utils.js'
 
+const K_CS_ENTRY = Symbol()
+const K_CS_TW = Symbol()
+const K_CS_TWP = Symbol()
+const K_CS_ON_CON = Symbol()
+const K_CS_ON_CLO = Symbol()
+const K_CS_ON_MSG = Symbol()
+const K_CS_ON_RPC = Symbol()
+const K_CS_MSG_PROC = Symbol()
+const K_CS_CLO_PROC = Symbol()
+const K_RPC_MAP = Symbol()
+const K_RPC_ID = Symbol()
+const K_CS_CON_SRV = Symbol()
+const K_CS_CON_WS = Symbol()
+const K_CS_CLI_ADDR = Symbol()
+const K_CS_TWP2 = Symbol()
+const K_CS_DEF_URL = Symbol()
+const K_CS_CON = Symbol()
+const K_CS_PCL = Symbol()
+const K_CS_DEF_OPT = Symbol()
+const K_CS_TIMEOUT = Symbol()
+const K_CS_TWAIT = Symbol()
+
 const MAX_MESSAGE_SIZE = 65536
 const MESSAGE_IDX_BEGIN = 7135
 const MESSAGE_IDX_TOKEN = 971394113
@@ -80,7 +102,7 @@ export class Protocol{
     conn : any
     ridx : number
     widx : number
-    headerBuf : Buffer
+    headerBuf : any
     currentData : any
     header_size : number
     data_size : number
@@ -178,30 +200,49 @@ export class Protocol{
     }
 }
 
-const K_CS_ENTRY = Symbol()
-const K_CS_TW = Symbol()
-const K_CS_TWP = Symbol()
-const K_CS_TWP2 = Symbol()
-const K_CS_ON_CON = Symbol()
-const K_CS_ON_CLO = Symbol()
-const K_CS_ON_MSG = Symbol()
-const K_CS_MSG_PROC = Symbol()
-const K_CS_CLO_PROC = Symbol()
-const K_CS_DEF_URL = Symbol()
-const K_CS_CON = Symbol()
-const K_CS_PCL = Symbol()
-const K_CS_DEF_OPT = Symbol()
-const K_CS_TIMEOUT = Symbol()
-const K_CS_TWAIT = Symbol()
-const K_CS_ON_RPC = Symbol()
+/**
+ * 客户端连接事件处理方法
+ * @param cli 新连上的连接对象
+ */
+type ClientConnectionProc = (cli:Client) => void
 
-const K_RPC_MAP = Symbol()
-const K_RPC_ID = Symbol()
+ /**
+  * 客户端关闭事件处理方法
+  * @param cli 被关闭的连接对象
+  */
+type ClientCloseProc = (cli:Client) => void
+ 
+ /**
+  * 客户端消息事件处理方法
+  * @param data 消息数据
+  * @param cli 相关的连接对象
+  */
+type ClientMessageProc = (msg:any, cli:Client) => void
+
+/**
+ * 客户端远程过程调用事件处理方法
+ * @param data 消息数据
+ * @param rpcid 调用ID
+ * @param cli 相关的连接对象
+ */
+type ClientRpcProc = (msg:any, rpcid:number, cli:Client) => void
+
+type ClientConfig = {
+    url?:string,
+    options?:object
+    timeout?: number,
+    on?:{
+        conn?:ClientConnectionProc
+        close?:ClientCloseProc
+        msg?:ClientMessageProc
+        rpc?:ClientRpcProc
+    }
+}
 
 /**
  * CS 客户端对象
  */
-export class Client{
+ export class Client{
 
     /** @internal */ [K_CS_ON_CON] : ClientConnectionProc
     /** @internal */ [K_CS_ON_CLO] : ClientCloseProc
@@ -217,6 +258,8 @@ export class Client{
     /** @internal */ [K_CS_CON] : WebSocket | null
     /** @internal */ [K_CS_TW] : any
 
+    [key:string]:any
+    
     /**
      * 构造一个客户端对象
      * @param {object} cfg 配置信息
@@ -321,7 +364,7 @@ export class Client{
             this[K_CS_CON].onmessage = null
             this[K_CS_CON].onclose = null
             this[K_CS_CON].onerror = ()=>{}
-            this[K_CS_CON].terminate()
+            this[K_CS_CON].close()
             this[K_CS_CON] = null
             this[K_CS_ON_CLO](this)
             for(let i in this[K_RPC_MAP])
@@ -426,16 +469,14 @@ export class Client{
     }
 }
 
-const K_CS_CON_SRV = Symbol()
-const K_CS_CON_WS = Symbol()
-const K_CS_CLI_ADDR = Symbol()
-
 export class Conn{
     [K_CS_CON_WS] : any
     [K_CS_CON_SRV] : Server
     [K_CS_CLI_ADDR] : string
     [K_RPC_MAP] : any
     [K_RPC_ID] : number
+
+    [key:string]:any
 
     /** @internal */
     constructor(ws:any, clientAddr:string, srv:Server){
@@ -478,6 +519,48 @@ declare type ServerConfig = {
 }
 
 /**
+ * 连接事件处理方法
+ * @param conn 新连上的连接对象
+ * @param srv 服务对象
+ */
+ type ConnectionProc = (conn:Conn, srv:Server) => void
+
+ /**
+  * 关闭事件处理方法
+  * @param conn 被关闭的连接对象
+  * @param srv 服务对象
+  */
+ type CloseProc = (conn:Conn, srv:Server) => void
+ 
+ /**
+  * 消息事件处理方法
+  * @param msg 消息
+  * @param conn 相关的连接对象
+  * @param srv 服务对象
+  */
+ type MessageProc = (msg:Buffer, conn:Conn, srv:Server) => void
+ 
+ /**
+  * 客户端远程过程调用事件处理方法
+  * @param data 消息数据
+  * @param rpcid 调用ID
+  * @param cli 相关的连接对象
+  */
+  type RpcProc = (msg:Buffer, rpcid:number, conn:Conn, srv:Server) => void
+
+declare type ServerConfig = {
+    app:any,
+    path:string,
+    timeout?: number,
+    on?:{
+        conn?:ConnectionProc
+        close?:CloseProc
+        msg?:MessageProc
+        rpc?:RpcProc
+    }
+}
+
+/**
  * CS 服务端对象
  */
 export class Server{
@@ -487,6 +570,8 @@ export class Server{
     /** @internal */ [K_CS_ON_MSG] : MessageProc
     /** @internal */ [K_CS_ON_RPC] : RpcProc
     /** @internal */ [K_CS_TW] : any
+
+    [key:string]:any
 
     /**
      * 构造一个服务端对象

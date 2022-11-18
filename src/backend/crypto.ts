@@ -1,28 +1,6 @@
 import {randomBytes, randomUUID, createHash, createSign, createVerify, createDecipheriv} from 'crypto'
-import {syncObject, timeStampS} from './utils.js'
-
-const DefaultRandomStringDict = '1234567890QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm'
-
-
-/**
- * 将任何数据转化为字符串，如果输入的是一个对象，会先按键名对其中的所有元素进行排序，而后按照"键值"的形式组合成字符串
- * @param {Any} data 任意数据
- * @returns 字符串选项
- */
-export function stringFromAny(data:any){
-    if(typeof data === 'string')
-        return data
-    else if(typeof data === 'object'){
-        const keylst = []
-        for(let k in data) keylst.push(k)
-        const keysorted = keylst.sort()
-        let str = ''
-        for(let k of keysorted)
-            str += String(k) + String(data[k])
-        return str
-    }
-    data = String(data)
-}
+import {timeStampS} from './utils.js'
+import {stringFromAny, generateString} from '../common/crypto.js'
 
 /**
  * 计算 sha1
@@ -78,12 +56,7 @@ export function randomBinary(length:number){
  */
 export function randomString(length:number, dict:string){
     if(!length) length = 32
-    if(!dict) dict=DefaultRandomStringDict
-    const buf = randomBytes(length)
-    let str = ''
-    for(let b of buf)
-        str += DefaultRandomStringDict[b % DefaultRandomStringDict.length]
-    return str
+    return generateString(randomBinary(length), dict)
 }
 
 /**
@@ -93,9 +66,7 @@ export function randomString(length:number, dict:string){
  */
 export function randomHex(length:number){
     if(!length) length = 32
-    let str = sha256(uuid)
-    while(str.length < length) str += sha256(uuid())
-    return str.slice(0, length)
+    return randomString(length, "0123456789abcdef")
 }
 
 type SignatureMethod = 'sha1' | 'sha256' | 'rsa-sha256'
@@ -119,16 +90,16 @@ const verifyMethods : {[ket:string]:(str:string, key:string, sign:string)=>boole
  * @param {object} options 选项
  * @returns {nonce: string, ts: number, sign: string}
  */
- export function MakeSignature(data:any, key:string, options?:{method?:SignatureMethod, nonceLength?:number, nonceDict?: string}):{nonce: string,ts: number,sign: string, [k:string]:any}|null{
-    const opts = { method: 'sha1', nonceLength: 32, nonceDict: DefaultRandomStringDict }
-    syncObject(opts, options)
-    const nonce = randomString(opts.nonceLength, opts.nonceDict)
+export function MakeSignature(data:any, key:string, 
+    {method = 'sha1', nonceLength = 32, nonceDict = '1234567890QWERTYUIOPASDFGHJKLZXCVBNMqwertyuiopasdfghjklzxcvbnm' }:
+    {method?:SignatureMethod, nonceLength?:number, nonceDict?: string}={}):{nonce: string,ts: number,sign: string, [k:string]:any}|null{
+    const nonce = randomString(nonceLength, nonceDict)
     const ts = timeStampS()
-    if(opts.method in signatureMethods)
+    if(method in signatureMethods)
         return {
             nonce: nonce,
             ts: ts,
-            sign: signatureMethods[opts.method](`${stringFromAny(data)}${nonce}${ts}`, key)
+            sign: signatureMethods[method](`${stringFromAny(data)}${nonce}${ts}`, key)
         }
     return null
 }
@@ -141,13 +112,12 @@ const verifyMethods : {[ket:string]:(str:string, key:string, sign:string)=>boole
  * @param {object} options 选项
  * @returns 验证通过返回 true，否则返回 false
  */
- export function VerifySignature(data:any, key:string, sign:{nonce:string,ts:number,sign:string}, options?:{method?:SignatureMethod, maxDeltaT?: number}):boolean{
-    const opts = { method: 'sha1', maxDeltaT:60 }
-    syncObject(opts, options)
+ export function VerifySignature(data:any, key:string, sign:{nonce:string,ts:number,sign:string}, 
+    { method = 'sha1', maxDeltaT = 60 }:{method?:SignatureMethod, maxDeltaT?: number}={}):boolean{
     const dt = timeStampS() - sign.ts
-    if(opts.maxDeltaT > 0 && (dt > opts.maxDeltaT || dt < -opts.maxDeltaT)) return false
-    if(opts.method in verifyMethods)
-        return verifyMethods[opts.method](`${stringFromAny(data)}${sign.nonce}${sign.ts}`, key, sign.sign)
+    if(maxDeltaT > 0 && (dt > maxDeltaT || dt < -maxDeltaT)) return false
+    if(method in verifyMethods)
+        return verifyMethods[method](`${stringFromAny(data)}${sign.nonce}${sign.ts}`, key, sign.sign)
     return false
 }
 

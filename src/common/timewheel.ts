@@ -10,7 +10,7 @@ const K_TIMEWHEEL_WRAPPER_BID = Symbol()
 const K_TIMEWHEEL_WRAPPER_AID = Symbol()
 const K_TIMEWHEEL_WRAPPER_OBJ = Symbol()
 
-declare type TimeWhellItem = {
+export type TimeWhellItem = {
     /** @internal */ [K_TIMEWHEEL_WRAPPER_BID]: number,
     /** @internal */ [K_TIMEWHEEL_WRAPPER_AID]: number,
     /** @internal */ [K_TIMEWHEEL_WRAPPER_OBJ]: any

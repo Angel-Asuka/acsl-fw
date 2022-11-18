@@ -26,9 +26,9 @@ const K_APP_HAS_WS = Symbol()
 const REG_IP = /\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/
 
 export type Req = {
-    get body():object
-    get query():object
-    get headers():object
+    get body():any
+    get query():any
+    get headers():any
     [key:string]:any
 }
 
@@ -68,7 +68,7 @@ type AppProcessor = RequestProcessor | {
     [key:string]:any
 }
 
-type AppConfig = {
+export type AppConfig = {
     root?:string,
     addr?:string,
     port?:number,
@@ -92,7 +92,7 @@ type AppConfig = {
     }
 }
 
-type AppModule = {
+export type AppModule = {
     name?:string,
     prefix?:string,
     init?:(app:Server)=>Promise<void>,
@@ -107,7 +107,7 @@ type AppModule = {
 /** 应用类 */
 export class Server{
     /** @internal */ [K_APP_CONFIG]: AppConfig
-    /** @internal */ [K_APP_CONFIG_DATA]: object
+    /** @internal */ [K_APP_CONFIG_DATA]: any
     /** @internal */ [K_APP_HAS_WS]: boolean
     /** @internal */ [K_APP_ROUTINE]: {[k:string]:any}
     /** @internal */ [K_APP_WSROUTINE]: {[k:string]:any}
@@ -218,7 +218,7 @@ export class Server{
                 cfg: proc
             }
             if(procObj.wsproc){
-                this[K_APP_WSROUTINE][full_path+'/.websocket'] = procObj
+                this[K_APP_WSROUTINE][((full_path=='/')?'':full_path)+'/.websocket'] = procObj
                 this[K_APP_HAS_WS] = true
             }
             if(procObj.proc)
@@ -319,7 +319,7 @@ export class Server{
 
     get modules() { return this[K_APP_MODULES]; }
     get config() { return this[K_APP_CONFIG]; }
-    get data() { return this[K_APP_CONFIG_DATA]; }
+    get data():any { return this[K_APP_CONFIG_DATA]; }
     get timestamp() { return Math.floor(Date.now()/1000); }
 
     render(fn:string, data:any){ return this.Template.render(fn,data) }

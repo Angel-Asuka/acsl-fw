@@ -1,10 +1,11 @@
 {
     "name": "@acsl/fw",
-    "version": "1.4.0",
+    "version": "1.4.1",
     "type": "module",
     "description": "AW Service Framework",
     "exports": {
-        ".": "./index.js"
+        ".": "./index.js",
+        "./web": "./web.js"
     },
     "scripts": {},
     "author": "AngelAsuka",
