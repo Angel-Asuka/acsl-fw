@@ -274,10 +274,7 @@ type ClientConfig = {
         this.close()
         if(!url) url = this[K_CS_DEF_URL]
         this[K_CS_TWAIT] = 0
-        if(typeof window == 'undefined')
-            this[K_CS_CON] =  new WebSocket(url, Object.assign({}, opt, this[K_CS_DEF_OPT]))
-        else
-            this[K_CS_CON] =  new WebSocket(url)
+        this[K_CS_CON] =  new WebSocket(url, Object.assign({}, opt, this[K_CS_DEF_OPT]))
         this[K_CS_CON].onclose = this[K_CS_CLO_PROC].bind(this)
         this[K_CS_CON].onerror = this[K_CS_CLO_PROC].bind(this)
         this[K_CS_CON].onmessage = this[K_CS_MSG_PROC].bind(this)
