@@ -27,76 +27,6 @@ const MAX_MESSAGE_SIZE = 65536
 const MESSAGE_IDX_BEGIN = 7135
 const MESSAGE_IDX_TOKEN = 971394113
 
-
-/**
- * 客户端连接事件处理方法
- * @param cli 新连上的连接对象
- */
- type ClientConnectionProc = (cli:Client) => void
-
- /**
-  * 客户端关闭事件处理方法
-  * @param cli 被关闭的连接对象
-  */
-type ClientCloseProc = (cli:Client) => void
- 
- /**
-  * 客户端消息事件处理方法
-  * @param data 消息数据
-  * @param cli 相关的连接对象
-  */
-type ClientMessageProc = (msg:Buffer, cli:Client) => void
-
-/**
- * 客户端远程过程调用事件处理方法
- * @param data 消息数据
- * @param rpcid 调用ID
- * @param cli 相关的连接对象
- */
-type ClientRpcProc = (msg:Buffer, rpcid:number, cli:Client) => void
-
-/**
- * 连接事件处理方法
- * @param conn 新连上的连接对象
- * @param srv 服务对象
- */
-type ConnectionProc = (conn:Conn, srv:Server) => void
-
-/**
- * 关闭事件处理方法
- * @param conn 被关闭的连接对象
- * @param srv 服务对象
- */
-type CloseProc = (conn:Conn, srv:Server) => void
-
-/**
- * 消息事件处理方法
- * @param msg 消息
- * @param conn 相关的连接对象
- * @param srv 服务对象
- */
-type MessageProc = (msg:Buffer, conn:Conn, srv:Server) => void
-
-/**
- * 客户端远程过程调用事件处理方法
- * @param data 消息数据
- * @param rpcid 调用ID
- * @param cli 相关的连接对象
- */
- type RpcProc = (msg:Buffer, rpcid:number, conn:Conn, srv:Server) => void
-
-type ClientConfig = {
-    url?:string,
-    options?:object
-    timeout?: number,
-    on?:{
-        conn?:ClientConnectionProc
-        close?:ClientCloseProc
-        msg?:ClientMessageProc
-        rpc?:ClientRpcProc
-    }
-}
-
 export class Protocol{
     repbeat : boolean
     conn : any
@@ -503,60 +433,6 @@ export class Conn{
 
     endRpc(msg:any, rpcid:number):void{
         this[K_CS_CON_SRV].endRpc(this, msg, rpcid)
-    }
-}
-
-declare type ServerConfig = {
-    app:any,
-    path:string,
-    timeout?: number,
-    on?:{
-        conn?:ConnectionProc
-        close?:CloseProc
-        msg?:MessageProc
-        rpc?:RpcProc
-    }
-}
-
-/**
- * 连接事件处理方法
- * @param conn 新连上的连接对象
- * @param srv 服务对象
- */
- type ConnectionProc = (conn:Conn, srv:Server) => void
-
- /**
-  * 关闭事件处理方法
-  * @param conn 被关闭的连接对象
-  * @param srv 服务对象
-  */
- type CloseProc = (conn:Conn, srv:Server) => void
- 
- /**
-  * 消息事件处理方法
-  * @param msg 消息
-  * @param conn 相关的连接对象
-  * @param srv 服务对象
-  */
- type MessageProc = (msg:Buffer, conn:Conn, srv:Server) => void
- 
- /**
-  * 客户端远程过程调用事件处理方法
-  * @param data 消息数据
-  * @param rpcid 调用ID
-  * @param cli 相关的连接对象
-  */
-  type RpcProc = (msg:Buffer, rpcid:number, conn:Conn, srv:Server) => void
-
-declare type ServerConfig = {
-    app:any,
-    path:string,
-    timeout?: number,
-    on?:{
-        conn?:ConnectionProc
-        close?:CloseProc
-        msg?:MessageProc
-        rpc?:RpcProc
     }
 }
 
