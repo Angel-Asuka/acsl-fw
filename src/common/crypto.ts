@@ -26,7 +26,7 @@ export function stringFromAny(data:any){
  * @param dict 字典
  * @returns 与src等长的字符串
  */
-export function generateString(src:ArrayBuffer, dict:string){
+export function generateString(src:ArrayBuffer, dict?:string){
     if(!dict) dict=DefaultRandomStringDict
     const buf = [...new Uint8Array(src)]
     let str = ''

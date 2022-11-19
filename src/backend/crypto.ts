@@ -54,7 +54,7 @@ export function randomBinary(length:number){
  * @param {string} dict 字典
  * @returns 随机字符串
  */
-export function randomString(length:number, dict:string){
+export function randomString(length:number, dict?:string){
     if(!length) length = 32
     return generateString(randomBinary(length), dict)
 }
