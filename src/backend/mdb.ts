@@ -1,71 +1,103 @@
-import {RedisConnectionPool} from 'redis-connection-pool'
+import {createClient, RedisClientType} from 'redis'
+import {createPool, Pool} from 'generic-pool'
 
 declare type MDBConfig = {
     host?:string,
     port?:number,
+    user?:string,
     password?:string,
     max_clients?:number,
+    secure?:boolean,
     db?:string,
     prefix?:string
 }
 
+const K_MDB_CONNECT_STR = Symbol()
 const K_MDB_CONNECTION_POOL = Symbol()
 const K_MDB_KEY_PREFIX = Symbol()
+const K_MDB_ON_CREATE_CLIENT = Symbol()
+const K_MDB_ON_DESTROY_CLIENT = Symbol()
 
 export class MDB{
+    /** @internal */ private [K_MDB_CONNECT_STR]:string
     /** @internal */ private [K_MDB_KEY_PREFIX]:string
-    /** @internal */ private [K_MDB_CONNECTION_POOL]:RedisConnectionPool
+    /** @internal */ private [K_MDB_CONNECTION_POOL]:Pool<RedisClientType>
 
-    constructor(cfg:MDBConfig) {
-        if (!cfg) cfg = {}
-        if (!cfg.host) cfg.host = "127.0.0.1"
-        if (!cfg.port) cfg.port = 6379
-        if (!cfg.max_clients) cfg.max_clients = 10
-        if (!cfg.db) cfg.db = '0'
-        let redis_cfg = {
-            host: cfg.host,
-            port: cfg.port,
-            max_clients: cfg.max_clients,
-            perform_checks: false,
-            database: cfg.db,
-            options: {
-                auth_pass: cfg.password
-            }
+    constructor({
+        host = '127.0.0.1',
+        port = 6379,
+        user = undefined,
+        password = undefined,
+        max_clients = 10,
+        secure = false,
+        db = undefined,
+        prefix = ''
+    }:MDBConfig = {}) {
+        this[K_MDB_KEY_PREFIX] = prefix || ''
+        this[K_MDB_CONNECT_STR] = secure?'rediss://':'redis://'
+        if(user != undefined || password != undefined){
+            this[K_MDB_CONNECT_STR] += user || ''
+            this[K_MDB_CONNECT_STR] += password?`:${password}`:''
+            this[K_MDB_CONNECT_STR] += '@'
         }
-        this[K_MDB_KEY_PREFIX] = cfg.prefix || ''
-        this[K_MDB_CONNECTION_POOL] = new RedisConnectionPool(redis_cfg)
+        this[K_MDB_CONNECT_STR] += `${host}:${port}`
+        if(db != undefined) this[K_MDB_CONNECT_STR] += `:${db}`
+        this[K_MDB_CONNECTION_POOL] = createPool<RedisClientType>({
+            create: this[K_MDB_ON_CREATE_CLIENT].bind(this),
+            destroy: this[K_MDB_ON_DESTROY_CLIENT].bind(this)
+        },{min:1, max:max_clients})
+    }
+
+    /** @internal */
+    private async [K_MDB_ON_CREATE_CLIENT]():Promise<RedisClientType>{
+        const client = <RedisClientType>createClient({url:this[K_MDB_CONNECT_STR]})
+        client.on('error', (err)=>console.log(err))
+        await client.connect()
+        return client
+    }
+
+    /** @internal */
+    private async [K_MDB_ON_DESTROY_CLIENT](client:RedisClientType){
+        await client.quit()
+    }
+
+    async Call(method:string, args: Array<any> = []):Promise<any>{
+        const cli:any = await this[K_MDB_CONNECTION_POOL].acquire()
+        const ret:any = await cli[method](...args)
+        await this[K_MDB_CONNECTION_POOL].release(cli)
+        return ret
     }
 
     async set (key:string, val:string|number, ttl?:number):Promise<string|null> {
-        return this[K_MDB_CONNECTION_POOL].set(this[K_MDB_KEY_PREFIX]+key, val, ttl)
+        return this.Call('SET', [this[K_MDB_KEY_PREFIX]+key, val, {EX: ttl}])
     }
 
-    async get (key:string):Promise<string> {
-        return this[K_MDB_CONNECTION_POOL].get(this[K_MDB_KEY_PREFIX]+key)
+    async get (key:string):Promise<string|null> {
+        return this.Call('GET', [this[K_MDB_KEY_PREFIX]+key])
     }
 
-    async expire (key:string, ttl:number):Promise<number> {
-        return this[K_MDB_CONNECTION_POOL].expire(this[K_MDB_KEY_PREFIX]+key, ttl)
+    async expire (key:string, ttl:number, mode?:'NX' | 'XX' | 'GT' | 'LT'):Promise<number> {
+        return this.Call('EXPIRE', [this[K_MDB_KEY_PREFIX]+key, ttl, mode])
     }
 
     async ttl(key:string):Promise<number> {
-        return this[K_MDB_CONNECTION_POOL].ttl(this[K_MDB_KEY_PREFIX]+key)
+        return this.Call('TTL', [this[K_MDB_KEY_PREFIX]+key])
     }
 
-    async del (key:string):Promise<number> {
-        return this[K_MDB_CONNECTION_POOL].del(this[K_MDB_KEY_PREFIX]+key)
+    async del (...keys:Array<string>):Promise<number> {
+        return this.Call('DEL', keys.map((x)=>{return this[K_MDB_KEY_PREFIX]+x}))
     }
 
     async hget (key:string, field:string):Promise<string> {
-        return this[K_MDB_CONNECTION_POOL].hget(this[K_MDB_KEY_PREFIX]+key, field)
+        return this.Call('HGET', [this[K_MDB_KEY_PREFIX]+key, field])
     }
 
     async hgetall (key:string):Promise<{[k:string]:string}> {
-        return this[K_MDB_CONNECTION_POOL].hgetall(this[K_MDB_KEY_PREFIX]+key)
+        return this.Call('HGETALL', [this[K_MDB_KEY_PREFIX]+key])
     }
 
     async hset (key:string, field:string, val:string):Promise<number> {
-        return this[K_MDB_CONNECTION_POOL].hset(this[K_MDB_KEY_PREFIX]+key, field, val)
+        return this.Call('HSET', [this[K_MDB_KEY_PREFIX]+key, field, val])
     }
 
     async hseto (key:string, obj:{[k:string]:string}) {
@@ -81,23 +113,7 @@ export class MDB{
         return null
     }
 
-    async hdel (key:string, fields:string[]):Promise<number> {
-        return this[K_MDB_CONNECTION_POOL].hdel(this[K_MDB_KEY_PREFIX]+key, fields)
-    }
-
-    async brpop (key:string) {
-        return this[K_MDB_CONNECTION_POOL].brpop(this[K_MDB_KEY_PREFIX]+key)
-    }
-
-    async blpop (key:string) {
-        return this[K_MDB_CONNECTION_POOL].blpop(this[K_MDB_KEY_PREFIX]+key)
-    }
-
-    async rpush (key:string, val:string) {
-        return this[K_MDB_CONNECTION_POOL].rpush(this[K_MDB_KEY_PREFIX]+key, val)
-    }
-
-    async lpush (key:string, val:string) {
-        return this[K_MDB_CONNECTION_POOL].lpush(this[K_MDB_KEY_PREFIX]+key, val)
+    async hdel (key:string, ...fields:string[]):Promise<number> {
+        return this.Call('HDEL', [this[K_MDB_KEY_PREFIX]+key, fields])
     }
 }
