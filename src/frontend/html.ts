@@ -56,7 +56,7 @@ $.build = function(tpl:any, root?:any, options?:BuildOptions): any{
                 if(typeof tpl[k] === 'string')
                     e.className = tpl[k]
                 else if(typeof tpl[k] === 'object' && tpl[k].constructor == Array)
-                    e.classList = tpl[k]
+                    e.classList.add(...tpl[k])
                 break;
             case 'child':
                 for(let c of tpl[k]) e.appendChild($.build(c, root, options))

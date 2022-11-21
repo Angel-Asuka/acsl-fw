@@ -78,7 +78,11 @@ declare type TimeFormat = 'rfc3339'|null
  * @param ts 要识别的时间日期字符串
  * @returns 识别出来的 Unix 时间戳
  */
- export function parseTS(ts:string):number{
+export function parseTS(ts:string):number{
     const d = new Date(ts)
     return Math.floor(d.getTime() / 1000)
+}
+
+export async function asleep(ms:number):Promise<void> {
+    return new Promise(r=>setTimeout(r, ms))
 }
