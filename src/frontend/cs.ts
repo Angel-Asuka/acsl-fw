@@ -291,10 +291,10 @@ type ClientConfig = {
             this[K_CS_CON].onerror = ()=>{}
             this[K_CS_CON].close()
             this[K_CS_CON] = null
-            this[K_CS_ON_CLO](this)
             for(let i in this[K_RPC_MAP])
                 this[K_RPC_MAP][i].j()
             this[K_RPC_MAP] = {}
+            this[K_CS_ON_CLO](this)
         }
     }
 

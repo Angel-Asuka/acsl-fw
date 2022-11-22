@@ -6,7 +6,14 @@
  */
  export function syncObject(obj:any, ref:any){
     if(typeof obj == 'object' && typeof ref == 'object')
-    for(let k in obj) if(k in ref) obj[k] = ref[k]
+    for(let k in obj){
+        if(k in ref){
+            if(typeof obj[k] == 'object' && obj[k] != null)
+                syncObject(obj[k], ref[k])
+            else
+                obj[k] = ref[k]
+        }
+    }
 }
 
 /**

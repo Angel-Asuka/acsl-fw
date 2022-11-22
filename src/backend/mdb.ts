@@ -76,6 +76,10 @@ export class MDB{
         return this.Call('GET', [this[K_MDB_KEY_PREFIX]+key])
     }
 
+    async exists (...keys:Array<string>):Promise<number> {
+        return this.Call('EXISTS', keys.map((x)=>{return this[K_MDB_KEY_PREFIX]+x}))
+    }
+
     async expire (key:string, ttl:number, mode?:'NX' | 'XX' | 'GT' | 'LT'):Promise<number> {
         return this.Call('EXPIRE', [this[K_MDB_KEY_PREFIX]+key, ttl, mode])
     }
@@ -88,19 +92,19 @@ export class MDB{
         return this.Call('DEL', keys.map((x)=>{return this[K_MDB_KEY_PREFIX]+x}))
     }
 
-    async hget (key:string, field:string):Promise<string> {
+    async hget (key:string, field:string):Promise<string|null> {
         return this.Call('HGET', [this[K_MDB_KEY_PREFIX]+key, field])
     }
 
-    async hgetall (key:string):Promise<{[k:string]:string}> {
+    async hgetall (key:string):Promise<{[k:string]:string}|null> {
         return this.Call('HGETALL', [this[K_MDB_KEY_PREFIX]+key])
     }
 
-    async hset (key:string, field:string, val:string):Promise<number> {
+    async hset (key:string, field:string, val:string|number):Promise<number> {
         return this.Call('HSET', [this[K_MDB_KEY_PREFIX]+key, field, val])
     }
 
-    async hseto (key:string, obj:{[k:string]:string}) {
+    async hseto (key:string, obj:{[k:string]:string|number}) {
         if (!obj) return null
         let jobs = [] as Array<Promise<number>>
         for (let f in obj)
@@ -115,5 +119,37 @@ export class MDB{
 
     async hdel (key:string, ...fields:string[]):Promise<number> {
         return this.Call('HDEL', [this[K_MDB_KEY_PREFIX]+key, fields])
+    }
+
+    async lpush(key:string, ...vals:Array<string|number>):Promise<number> {
+        return this.Call('LPUSH', [key, vals])
+    }
+
+    async lpushx(key:string, ...vals:Array<string|number>):Promise<number> {
+        return this.Call('LPUSHX', [key, vals])
+    }
+
+    async lpop(key:string):Promise<string|null> {
+        return this.Call('LPOP', [key])
+    }
+
+    async rpush(key:string, ...vals:Array<string|number>):Promise<number> {
+        return this.Call('RPUSH', [key, vals])
+    }
+
+    async rpushx(key:string, ...vals:Array<string|number>):Promise<number> {
+        return this.Call('RPUSHX', [key, vals])
+    }
+
+    async rpop(key:string):Promise<string|null> {
+        return this.Call('RPOP', [key])
+    }
+
+    async llen(key:string):Promise<number> {
+        return this.Call('LLEN', [key])
+    }
+
+    async lindex(key:string, idx:number):Promise<string|null> {
+        return this.Call('LINDEX', [key, idx])
     }
 }
