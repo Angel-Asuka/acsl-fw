@@ -296,10 +296,10 @@ type ClientConfig = {
             this[K_CS_CON].onerror = ()=>{}
             this[K_CS_CON].close()
             this[K_CS_CON] = null
-            this[K_CS_ON_CLO](this)
             for(let i in this[K_RPC_MAP])
                 this[K_RPC_MAP][i].j()
             this[K_RPC_MAP] = {}
+            this[K_CS_ON_CLO](this)
         }
     }
 
@@ -581,12 +581,12 @@ export class Server{
             }
             conn.cs = null
             conn.terminate()
-            try{
-                this[K_CS_ON_CLO](conn.ifc, this)
-            }catch(e){console.log(e)}
             for(let i in conn.ifc[K_RPC_MAP])
                 conn.ifc[K_RPC_MAP][i].j()
             conn.ifc[K_RPC_MAP] = {}
+            try{
+                this[K_CS_ON_CLO](conn.ifc, this)
+            }catch(e){console.log(e)}
         }
     }
     
