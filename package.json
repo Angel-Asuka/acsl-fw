@@ -27,5 +27,8 @@
         "@types/mysql": "^2.15.21",
         "@types/node": "^18.11.9",
         "@types/ws": "^8.5.3"
+    },
+    "publishConfig": {
+        "registry": "https://registry.npmjs.org"
     }
 }
