@@ -290,7 +290,7 @@ export class Server{
 
         if (cfg.template){
             if (typeof cfg.template === 'string')
-                this.Template.set({root:cfg.root + cfg.template})
+                this.Template.set({root: ((cfg.template[0] == '/')?'':cfg.root) + cfg.template})
             else if(typeof cfg.template === 'object'){
                 this.Template.set(cfg.template, cfg.root)
             }
@@ -356,8 +356,7 @@ export class Server{
         srv.use(bodyParser.json());
         srv.use(cookieParser());
         if (this[K_APP_CONFIG].static)
-            srv.use(express.static(this[K_APP_CONFIG].root + this[K_APP_CONFIG].static));
-
+            srv.use(express.static(((this[K_APP_CONFIG].static[0] == '/')?'':this[K_APP_CONFIG].root) + this[K_APP_CONFIG].static));
         if(this[K_APP_CONFIG].ssl){
             if (!this[K_APP_CONFIG].port) this[K_APP_CONFIG].port = 443
             const credentials:any = {
