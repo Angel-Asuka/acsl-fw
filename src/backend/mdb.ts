@@ -122,34 +122,34 @@ export class MDB{
     }
 
     async lpush(key:string, ...vals:Array<string|number>):Promise<number> {
-        return this.Call('LPUSH', [key, vals])
+        return this.Call('LPUSH', [this[K_MDB_KEY_PREFIX]+key, vals])
     }
 
     async lpushx(key:string, ...vals:Array<string|number>):Promise<number> {
-        return this.Call('LPUSHX', [key, vals])
+        return this.Call('LPUSHX', [this[K_MDB_KEY_PREFIX]+key, vals])
     }
 
     async lpop(key:string):Promise<string|null> {
-        return this.Call('LPOP', [key])
+        return this.Call('LPOP', [this[K_MDB_KEY_PREFIX]+key])
     }
 
     async rpush(key:string, ...vals:Array<string|number>):Promise<number> {
-        return this.Call('RPUSH', [key, vals])
+        return this.Call('RPUSH', [this[K_MDB_KEY_PREFIX]+key, vals])
     }
 
     async rpushx(key:string, ...vals:Array<string|number>):Promise<number> {
-        return this.Call('RPUSHX', [key, vals])
+        return this.Call('RPUSHX', [this[K_MDB_KEY_PREFIX]+key, vals])
     }
 
     async rpop(key:string):Promise<string|null> {
-        return this.Call('RPOP', [key])
+        return this.Call('RPOP', [this[K_MDB_KEY_PREFIX]+key])
     }
 
     async llen(key:string):Promise<number> {
-        return this.Call('LLEN', [key])
+        return this.Call('LLEN', [this[K_MDB_KEY_PREFIX]+key])
     }
 
     async lindex(key:string, idx:number):Promise<string|null> {
-        return this.Call('LINDEX', [key, idx])
+        return this.Call('LINDEX', [this[K_MDB_KEY_PREFIX]+key, idx])
     }
 }
