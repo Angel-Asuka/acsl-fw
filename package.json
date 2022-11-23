@@ -1,6 +1,6 @@
 {
     "name": "@acsl/fw",
-    "version": "1.4.6",
+    "version": "1.4.7",
     "type": "module",
     "description": "AW Service Framework",
     "exports": {
@@ -27,5 +27,8 @@
         "@types/mysql": "^2.15.21",
         "@types/node": "^18.11.9",
         "@types/ws": "^8.5.3"
+    },
+    "publishConfig": {
+        "registry": "https://registry.npmjs.org"
     }
 }
