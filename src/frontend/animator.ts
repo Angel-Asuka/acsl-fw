@@ -60,10 +60,9 @@ const kFramePos = Symbol()
 const kWaitingMan = Symbol()
 const kDirection = Symbol()
 const kLoop = Symbol()
-const kRTLen = Symbol()
-const kRTDur = Symbol()
-const kRTDir = Symbol()
+const kRunning = Symbol()
 const kTotalLen = Symbol()
+
 
 export type AnimatorFrameCallBack = (pos:number)=>void
 export type AnimatorOptions = {
@@ -83,6 +82,7 @@ export class Animator{
     /** @internal */ private [kDirection]:number[]
     /** @internal */ private [kLoop]:number
     /** @internal */ private [kTotalLen]:number
+    /** @internal */ private [kRunning]:boolean
 
     constructor(cb: AnimatorFrameCallBack, {duration=1000, direction=[1,-1], loop=1 }:AnimatorOptions = {}){
         this[kPlaying] = false
@@ -94,6 +94,7 @@ export class Animator{
         this[kFramePos] = 0
         this[kWaitingMan] = new Wish()
         this[kTotalLen] = 0
+        this[kRunning] = true
     }
 
     play(opt?:AnimatorOptions){
@@ -107,12 +108,14 @@ export class Animator{
         this[kTotalLen] = this[kLoop] * this[kDuration]
         if(this[kTotalLen] == 0) this[kTotalLen] = 0xffffffff
         this[kPlaying] = true
+        this[kRunning] = true
         this[kStartTS] = timeStampMS()
         this[kFramePos] = 0
         this[kFrameProc]()
     }
 
     stop(){
+        this[kRunning] = false
         this[kPlaying] =  false
     }
 
@@ -120,9 +123,14 @@ export class Animator{
         if(this[kPlaying]) return this[kWaitingMan].wait()
     }
 
+    get duration() { return this[kDuration] }
+    set duration(v:number) { if(!this[kPlaying]) this[kDuration] = v }
+
     get progress(){
         return this[kFramePos]
     }
+
+    get running(){ return this[kPlaying] }
 
     set progress(val:number){
         if(this[kPlaying])
@@ -135,13 +143,13 @@ export class Animator{
         let times = Math.floor(delta / this[kDuration])                                                 // 当前次数
         let frame = (delta % this[kDuration])                                                           // 逻辑帧号
         if(delta >= this[kTotalLen]){
-            this[kPlaying] = false
             frame = this[kDuration]
             times = this[kLoop]-1
+            this[kPlaying] = false
         }
         this[kFramePos] = frame * this[kDirection][times % this[kDirection].length] / this[kDuration]   // 动画帧号
         if(this[kFramePos] < 0) this[kFramePos] += 1
-        this[kFrameCallBack](this[kFramePos])
+        if(this[kRunning]) this[kFrameCallBack](this[kFramePos])
         if(this[kPlaying])
             requestAnimationFrame(this[kFrameProc].bind(this))
         else
