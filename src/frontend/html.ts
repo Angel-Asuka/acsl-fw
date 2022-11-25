@@ -21,7 +21,6 @@ const __elementInitList = [] as Array<CustomElementBase>
 export class CustomElementBase extends HTMLElement {
     constructor(){
         super()
-        __elementInitList.push(this)
     }
 
     onInitElement(){}
@@ -30,7 +29,9 @@ export class CustomElementBase extends HTMLElement {
 export const $ = <HtmlHelper>function(a:string|Func|object,...args:any[]){
     if(typeof a === 'string'){
         if(a[0] == '!'){
-            return document.createElement(a.substring(1))
+            const e = document.createElement(a.substring(1)) as CustomElementBase
+            if(e['onInitElement']) e['onInitElement']()
+            return e
         }else if(a[0] == '@'){
             return document.getElementsByTagName(a.substring(1))
         }else
@@ -127,6 +128,8 @@ declare global {
         isParentOf(n:Node):boolean
         /** 判断当前节点是否是 n 的子辈 */
         isChildOf(n:Node):boolean
+        /** 移除所有子节点 */
+        removeAllChild():void
     }
 
     interface Element {
@@ -197,6 +200,10 @@ Element.prototype.isParentOf = function(n:Node){
 
 Element.prototype.isChildOf = function(n:Node) {
     return n.isParentOf(this)
+}
+
+Element.prototype.removeAllChild = function(){
+    while(this.firstChild) this.removeChild(this.firstChild)
 }
 
 const kShowAnimation = Symbol()

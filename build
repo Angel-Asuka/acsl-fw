@@ -12,6 +12,8 @@ publish(){
     make
     cd dist
     npm publish
+    sed -i "s/\"registry.*/\"registry\":\"http:\/\/npm.inner:8081\/repository\/private\/\"/g" ./package.json
+    npm publish
 }
 
 $1
