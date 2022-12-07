@@ -1,4 +1,4 @@
-import {randomBytes, randomUUID, createHash, createSign, createVerify, createDecipheriv} from 'crypto'
+import {randomBytes, randomUUID, createHash, createSign, createVerify, createDecipheriv, createCipheriv} from 'crypto'
 import {timeStampS} from './utils.js'
 import {stringFromAny, generateString} from '../common/crypto.js'
 
@@ -143,6 +143,32 @@ export function Decode_AES_256_GCM(key:string, iv:string, add:string, encrypted:
             decipher.update(encrypted),
             decipher.final()
         ])
+    }catch(e){
+        console.log(e)
+        return null
+    }
+}
+
+/**
+ * 加密 AES256GCM 明文
+ * @param {string} key 密钥
+ * @param {string} iv IV
+ * @param {string} add ADD
+ * @param {string} plain 明文
+ * @returns {encrypted: string, mac: string}
+ */
+export function Encode_AES_256_GCM(key:string, iv:string, add:string, plain:string){
+    try{
+        const cipher = createCipheriv('AES-256-GCM', key, iv) as any
+        cipher.setAAD(Buffer.from(add))
+        const encrypted = Buffer.concat([
+            cipher.update(plain),
+            cipher.final()
+        ])
+        return {
+            encrypted: encrypted.toString('base64'),
+            mac: cipher.getAuthTag().toString('base64')
+        }
     }catch(e){
         console.log(e)
         return null
