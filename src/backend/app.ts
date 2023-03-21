@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser'
 import {Template, TemplateConfig} from './template.js'
 import * as httpsys from 'http'
 import * as httpssys from 'https'
+import path from 'path'
 
 const K_APP_CONFIG = Symbol()
 const K_APP_ROUTINE = Symbol()
@@ -263,20 +264,28 @@ export class Server{
     /** @internal */
     async [K_APP_LOAD](){
         const cfg = this[K_APP_CONFIG]
+
+        // 备份 CWD
+        const cwd = process.cwd()
+
+        // 设置当前目录
+        if (cfg.root)
+            process.chdir(cfg.root)
+
         // 尝试扫描 errpages 目录
         if (cfg.errpages) {
-            const dl = fs.readdirSync(cfg.root + cfg.errpages);
+            const dl = fs.readdirSync(path.resolve(cfg.errpages));
             dl.forEach((itm) => {
                 const code = parseInt(itm);
                 if (!isNaN(code)){
-                    this[K_APP_ERRPAGES][code] = fs.readFileSync((cfg.root || '') + cfg.errpages + '/' + itm, 'utf8');
+                    this[K_APP_ERRPAGES][code] = fs.readFileSync(path.resolve(cfg.errpages + '/' + itm, 'utf8'));
                 }
             });
         }
 
         // 尝试扫描 app 所指目录
         if (cfg.app) {
-            const app_path = cfg.root + cfg.app
+            const app_path = path.resolve(cfg.app)
             if(fs.existsSync(app_path)){
                 const dl = fs.readdirSync(app_path)
                 const ml = [] as string[]
@@ -290,7 +299,7 @@ export class Server{
 
         if (cfg.template){
             if (typeof cfg.template === 'string')
-                this.Template.set({root: ((cfg.template[0] == '/')?'':cfg.root) + cfg.template})
+                this.Template.set({root: path.resolve(cfg.template)})
             else if(typeof cfg.template === 'object'){
                 this.Template.set(cfg.template, cfg.root)
             }
@@ -315,6 +324,9 @@ export class Server{
         // 记录初始化函数
         if (cfg.init)
             this[K_APP_USER_INIT] = cfg.init
+
+        // 恢复 CWD
+        process.chdir(cwd)
     }
 
     get modules() { return this[K_APP_MODULES]; }
