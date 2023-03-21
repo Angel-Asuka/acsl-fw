@@ -1,11 +1,11 @@
 {
     "name": "@acsl/fw",
-    "version": "1.4.13",
+    "version": "1.4.14",
     "type": "module",
     "description": "AW Service Framework",
     "exports": {
-        ".": "./lib/index.js",
-        "./web": "./lib/web.js"
+        ".": "./index.js",
+        "./web": "./web.js"
     },
     "scripts": {
         "build": "rm -fr ./dist && tsc -p tsconfig.json",
