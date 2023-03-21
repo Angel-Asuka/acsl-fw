@@ -6,6 +6,5 @@
         "sourceMap": false,
         "declaration": true
     },
-    "include": ["./src"],
-    "exclude": ["./old"]
+    "include": ["./src"]
 }

@@ -1,0 +1,40 @@
+image: lab-node:lts
+
+cache:
+  paths:
+    - node_modules/
+
+stages:
+  - test
+  - release
+
+test:
+  stage: test
+  script:
+    - npm install
+    - npm run test
+
+release:
+  stage: release
+  artifacts:
+    paths:
+      - "./dist/*.tgz"
+    untracked: false
+    when: on_success
+  script:
+    - if [ ! -z "$AVOID_RELEASE" ]; then echo "AVOID_RELEASE is set, skipping release"; exit 0; fi
+    - autoenv
+    - npm install
+    - npm run build
+    - cd dist
+    - cp ../package.json ./
+    - cp ../README.md ./
+    - cp ../LICENSE ./
+    - npm-try-publish
+    - npm-try-publish https://nexus.afx.pub/repository/npm-host/
+    - npm pack
+    - VERSION=$(node -p "require('./package.json').version")
+    - TAGNAME=$CI_PROJECT_NAME-$VERSION
+    - tag-req $TAGNAME "main" "Automatic tag request for version ${VERSION} by CI/CD Bot."
+  only:
+    - main

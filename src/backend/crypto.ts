@@ -74,13 +74,13 @@ type SignatureMethod = 'sha1' | 'sha256' | 'rsa-sha256'
 const signatureMethods : {[ket:string]:(str:string, key:string)=>string} = {
     ['sha1']: (str:string, key:string) => sha1(str+key),
     ['sha256']: (str:string, key:string) => sha256(str+key),
-    ['rsa-sha256']: (str:string, key:string, m?:'base64' | 'base64url' | 'hex' | 'binary') => createSign('RSA-SHA256').update(str).sign(key, m || 'base64')
+    ['rsa-sha256']: (str:string, key:string, m?:'base64' | 'base64url' | 'hex') => createSign('RSA-SHA256').update(str).sign(key, m || 'base64')
 }
 
 const verifyMethods : {[ket:string]:(str:string, key:string, sign:string)=>boolean} = {
     ['sha1']: (str:string, key:string, sign:string) => (sha1(str+key) == sign),
     ['sha256']: (str:string, key:string, sign:string) => (sha256(str+key) == sign),
-    ['rsa-sha256']: (str:string, key:string, sign:string, m?:'base64' | 'base64url' | 'hex' | 'binary') => createVerify('RSA-SHA256').update(str).verify(key, sign, m || 'base64')
+    ['rsa-sha256']: (str:string, key:string, sign:string, m?:'base64' | 'base64url' | 'hex') => createVerify('RSA-SHA256').update(str).verify(key, sign, m || 'base64')
 }
 
 /**
